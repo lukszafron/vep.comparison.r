@@ -1,10 +1,8 @@
 #! /usr/bin/env Rscript
 cat("Program path:", unlist(strsplit(grep(commandArgs(), pattern = "file=", value = T), split = "="))[2], "\n")
-
 arguments2 <- commandArgs(trailingOnly = T)
-arguments2
-
 if(length(arguments2) != 8) {stop("This program requires eight arguments. The first one is the destination folder, the second is the number of threads to use, the third should point to the CSV file used in the vep.r analysis, the fourth is the grouping variable, the fifth is the independent factor used, the sixth determines if the samples are paired, the seventh indicates the pair indicator column, while the eighth determines whether the FDR correction should be performed.")}
+arguments2
 
 library(doMC)
 library(foreach)
@@ -29,268 +27,134 @@ f.vep.comparison <- function(Robject1, Robject2) {
       .col <- rep(rev(heat.colors(length(unique(x)))), time = table(x))
       return(.col[match(1:length(x), order(x))])
     }
-    args <- seq(1,14)
     suffix <- paste(runid, group, groupid, "impact", sub(impact, pattern = "X.HIGH.MODERATE.", replacement = "HIGH_or_MODERATE"), sep = ".")
-    GOdata.BP <- new("topGOdata",
-                     ontology = "BP",
-                     allGenes = geneList,
-                     geneSel = topDiffGenes,
-                     annotationFun=annFUN.org, mapping = "org.Hs.eg.db", ID = "symbol",
-                     nodeSize = 10)
-    if(length(GOdata.BP@graph@nodes) >= 50) {nodesn.BP <- 50} else {nodesn.BP <- length(GOdata.BP@graph@nodes)}
-    
-    resultFisher.BP <- runTest(GOdata.BP, algorithm = "classic", statistic = "fisher")
-    resultFisher.BP
-    resultKS.BP <- runTest(GOdata.BP, algorithm = "classic", statistic = "ks")
-    resultKS.BP
-    resultKS.elim.BP <- runTest(GOdata.BP, algorithm = "elim", statistic = "ks")
-    resultKS.elim.BP
-    allRes.BP.classicKS <- GenTable(GOdata.BP, classicFisher = resultFisher.BP,
-                                    classicKS = resultKS.BP, elimKS = resultKS.elim.BP,
-                                    orderBy = "classicKS", ranksOf = "classicFisher", topNodes = nodesn.BP)
-    allRes.BP.elimKS <- GenTable(GOdata.BP, classicFisher = resultFisher.BP,
-                                 classicKS = resultKS.BP, elimKS = resultKS.elim.BP,
-                                 orderBy = "elimKS", ranksOf = "classicFisher", topNodes = nodesn.BP)
-    allRes.BP.Fisher <- GenTable(GOdata.BP, classicFisher = resultFisher.BP,
-                                 classicKS = resultKS.BP, elimKS = resultKS.elim.BP,
-                                 orderBy = "classicFisher", ranksOf = "classicFisher", topNodes = nodesn.BP)
-    geneSig <- geneList[topDiffGenes(geneList)]
-    
-    AnnotatedGenes.BP.classicKS <- sapply(allRes.BP.classicKS$GO.ID, function(x) { as.character(unlist(genesInTerm(object = GOdata.BP, whichGO = x)))})
-    genes_with_GO_term <- function(x) {AnnotatedGenes.BP.classicKS[[x]][AnnotatedGenes.BP.classicKS[[x]] %in% names(geneSig)]}
-    GeneList.BP.classicKS <- sapply(allRes.BP.classicKS$GO.ID,genes_with_GO_term)
-    if (length(args)==14) {
-      sink(paste("GO_top50-significant_genes.BP.classicKS",".(",Indfactor,").",suffix,".txt", sep = ""))
-    }
-    print(GeneList.BP.classicKS)
-    sink()
-    
-    AnnotatedGenes.BP.elimKS <- sapply(allRes.BP.elimKS$GO.ID, function(x) { as.character(unlist(genesInTerm(object = GOdata.BP, whichGO = x)))})
-    genes_with_GO_term <- function(x) {AnnotatedGenes.BP.elimKS[[x]][AnnotatedGenes.BP.elimKS[[x]] %in% names(geneSig)]}
-    GeneList.BP.elimKS <- sapply(allRes.BP.elimKS$GO.ID,genes_with_GO_term)
-    if (length(args)==14) {
-      sink(paste("GO_top50-significant_genes.BP.elimKS",".(",Indfactor,").",suffix,".txt", sep = ""))
-    } 
-    print(GeneList.BP.elimKS)
-    sink()
-    
-    AnnotatedGenes.BP.Fisher <- sapply(allRes.BP.Fisher$GO.ID, function(x) { as.character(unlist(genesInTerm(object = GOdata.BP, whichGO = x)))})
-    genes_with_GO_term <- function(x) {AnnotatedGenes.BP.Fisher[[x]][AnnotatedGenes.BP.Fisher[[x]] %in% names(geneSig)]}
-    GeneList.BP.Fisher <- sapply(allRes.BP.Fisher$GO.ID,genes_with_GO_term)
-    if (length(args)==14) {
-      sink(paste("GO_top50-significant_genes.BP.Fisher",".(",Indfactor,").",suffix,".txt", sep = ""))
-    } 
-    print(GeneList.BP.Fisher)
-    sink()
-    
-    GOdata.CC <- new("topGOdata",
-                     ontology = "CC",
-                     allGenes = geneList,
-                     geneSel = topDiffGenes,
-                     annotationFun=annFUN.org, mapping = "org.Hs.eg.db", ID = "symbol",
-                     nodeSize = 10)
-    if(length(GOdata.CC@graph@nodes) >= 50) {nodesn.CC <- 50} else {nodesn.CC <- length(GOdata.CC@graph@nodes)}
-    
-    resultFisher.CC <- runTest(GOdata.CC, algorithm = "classic", statistic = "fisher")
-    resultFisher.CC
-    resultKS.CC <- runTest(GOdata.CC, algorithm = "classic", statistic = "ks")
-    resultKS.CC
-    resultKS.elim.CC <- runTest(GOdata.CC, algorithm = "elim", statistic = "ks")
-    resultKS.elim.CC
-    allRes.CC.classicKS <- GenTable(GOdata.CC, classicFisher = resultFisher.CC,
-                                    classicKS = resultKS.CC, elimKS = resultKS.elim.CC,
-                                    orderBy = "classicKS", ranksOf = "classicFisher", topNodes = nodesn.CC)
-    allRes.CC.elimKS <- GenTable(GOdata.CC, classicFisher = resultFisher.CC,
-                                 classicKS = resultKS.CC, elimKS = resultKS.elim.CC,
-                                 orderBy = "elimKS", ranksOf = "classicFisher", topNodes = nodesn.CC)
-    allRes.CC.Fisher <- GenTable(GOdata.CC, classicFisher = resultFisher.CC,
-                                 classicKS = resultKS.CC, elimKS = resultKS.elim.CC,
-                                 orderBy = "classicFisher", ranksOf = "classicFisher", topNodes = nodesn.CC)
-    geneSig <- geneList[topDiffGenes(geneList)]
-    
-    AnnotatedGenes.CC.classicKS <- sapply(allRes.CC.classicKS$GO.ID, function(x) { as.character(unlist(genesInTerm(object = GOdata.CC, whichGO = x)))})
-    genes_with_GO_term <- function(x) {AnnotatedGenes.CC.classicKS[[x]][AnnotatedGenes.CC.classicKS[[x]] %in% names(geneSig)]}
-    GeneList.CC.classicKS <- sapply(allRes.CC.classicKS$GO.ID,genes_with_GO_term)
-    if (length(args)==14) {
-      sink(paste("GO_top50-significant_genes.CC.classicKS",".(",Indfactor,").",suffix,".txt", sep = ""))
-    } 
-    print(GeneList.CC.classicKS)
-    sink()
-    
-    AnnotatedGenes.CC.elimKS <- sapply(allRes.CC.elimKS$GO.ID, function(x) { as.character(unlist(genesInTerm(object = GOdata.CC, whichGO = x)))})
-    genes_with_GO_term <- function(x) {AnnotatedGenes.CC.elimKS[[x]][AnnotatedGenes.CC.elimKS[[x]] %in% names(geneSig)]}
-    GeneList.CC.elimKS <- sapply(allRes.CC.elimKS$GO.ID,genes_with_GO_term)
-    if (length(args)==14) {
-      sink(paste("GO_top50-significant_genes.CC.elimKS",".(",Indfactor,").",suffix,".txt", sep = ""))
-    } 
-    print(GeneList.CC.elimKS)
-    sink()
-    
-    AnnotatedGenes.CC.Fisher <- sapply(allRes.CC.Fisher$GO.ID, function(x) { as.character(unlist(genesInTerm(object = GOdata.CC, whichGO = x)))})
-    genes_with_GO_term <- function(x) {AnnotatedGenes.CC.Fisher[[x]][AnnotatedGenes.CC.Fisher[[x]] %in% names(geneSig)]}
-    GeneList.CC.Fisher <- sapply(allRes.CC.Fisher$GO.ID,genes_with_GO_term)
-    if (length(args)==14) {
-      sink(paste("GO_top50-significant_genes.CC.Fisher",".(",Indfactor,").",suffix,".txt", sep = ""))
-    } 
-    print(GeneList.CC.Fisher)
-    sink()
-    
-    GOdata.MF <- new("topGOdata",
-                     ontology = "MF",
-                     allGenes = geneList,
-                     geneSel = topDiffGenes,
-                     annotationFun=annFUN.org, mapping = "org.Hs.eg.db", ID = "symbol",
-                     nodeSize = 10)
-    if(length(GOdata.MF@graph@nodes) >= 50) {nodesn.MF <- 50} else {nodesn.MF <- length(GOdata.MF@graph@nodes)}
-    
-    resultFisher.MF <- runTest(GOdata.MF, algorithm = "classic", statistic = "fisher")
-    resultFisher.MF
-    resultKS.MF <- runTest(GOdata.MF, algorithm = "classic", statistic = "ks")
-    resultKS.MF
-    resultKS.elim.MF <- runTest(GOdata.MF, algorithm = "elim", statistic = "ks")
-    resultKS.elim.MF
-    allRes.MF.classicKS <- GenTable(GOdata.MF, classicFisher = resultFisher.MF,
-                                    classicKS = resultKS.MF, elimKS = resultKS.elim.MF,
-                                    orderBy = "classicKS", ranksOf = "classicFisher", topNodes = nodesn.MF)
-    allRes.MF.elimKS <- GenTable(GOdata.MF, classicFisher = resultFisher.MF,
-                                 classicKS = resultKS.MF, elimKS = resultKS.elim.MF,
-                                 orderBy = "elimKS", ranksOf = "classicFisher", topNodes = nodesn.MF)
-    allRes.MF.Fisher <- GenTable(GOdata.MF, classicFisher = resultFisher.MF,
-                                 classicKS = resultKS.MF, elimKS = resultKS.elim.MF,
-                                 orderBy = "classicFisher", ranksOf = "classicFisher", topNodes = nodesn.MF)
-    geneSig <- geneList[topDiffGenes(geneList)]
-    
-    AnnotatedGenes.MF.classicKS <- sapply(allRes.MF.classicKS$GO.ID, function(x) { as.character(unlist(genesInTerm(object = GOdata.MF, whichGO = x)))})
-    genes_with_GO_term <- function(x) {AnnotatedGenes.MF.classicKS[[x]][AnnotatedGenes.MF.classicKS[[x]] %in% names(geneSig)]}
-    GeneList.MF.classicKS <- sapply(allRes.MF.classicKS$GO.ID,genes_with_GO_term)
-    if (length(args)==14) {
-      sink(paste("GO_top50-significant_genes.MF.classicKS",".(",Indfactor,").",suffix,".txt", sep = ""))
-    } 
-    print(GeneList.MF.classicKS)
-    sink()
-    
-    AnnotatedGenes.MF.elimKS <- sapply(allRes.MF.elimKS$GO.ID, function(x) { as.character(unlist(genesInTerm(object = GOdata.MF, whichGO = x)))})
-    genes_with_GO_term <- function(x) {AnnotatedGenes.MF.elimKS[[x]][AnnotatedGenes.MF.elimKS[[x]] %in% names(geneSig)]}
-    GeneList.MF.elimKS <- sapply(allRes.MF.elimKS$GO.ID,genes_with_GO_term)
-    if (length(args)==14) {
-      sink(paste("GO_top50-significant_genes.MF.elimKS",".(",Indfactor,").",suffix,".txt", sep = ""))
-    } 
-    print(GeneList.MF.elimKS)
-    sink()
-    
-    AnnotatedGenes.MF.Fisher <- sapply(allRes.MF.Fisher$GO.ID, function(x) { as.character(unlist(genesInTerm(object = GOdata.MF, whichGO = x)))})
-    genes_with_GO_term <- function(x) {AnnotatedGenes.MF.Fisher[[x]][AnnotatedGenes.MF.Fisher[[x]] %in% names(geneSig)]}
-    GeneList.MF.Fisher <- sapply(allRes.MF.Fisher$GO.ID,genes_with_GO_term)
-    if (length(args)==14) {
-      sink(paste("GO_top50-significant_genes.MF.Fisher",".(",Indfactor,").",suffix,".txt", sep = ""))
-    }
-    print(GeneList.MF.Fisher)
-    sink()
-    
     wb <- createWorkbook()
-    
-    if (length(args)==14) {
-      sheet.name <- "GO-top_50.BP-classicKS"
-      addWorksheet(wb = wb, sheetName = sheet.name)
-      writeData(allRes.BP.classicKS, wb = wb, sheet = sheet.name, rowNames = F)
+    for(GOtype in c("BP", "CC", "MF")) { 
+      GOdata.GOtype <- new("topGOdata",
+                           ontology = GOtype,
+                           allGenes = geneList,
+                           geneSel = topDiffGenes,
+                           annotationFun=annFUN.org, mapping = "org.Hs.eg.db", ID = "symbol",
+                           nodeSize = 10)
+      assign(paste("GOdata", GOtype, sep = "."), value = GOdata.GOtype)
       
-      sheet.name <- "GO-top_50.BP-elimKS"
-      addWorksheet(wb = wb, sheetName = sheet.name)
-      writeData(allRes.BP.elimKS, wb = wb, sheet = sheet.name, rowNames = F)
+      if(length(GOdata.GOtype@graph@nodes) >= 50) {nodesn.GOtype <- 50} else {nodesn.GOtype <- length(GOdata.GOtype@graph@nodes)}
       
-      sheet.name <- "GO-top_50.BP-Fisher"
-      addWorksheet(wb = wb, sheetName = sheet.name)
-      writeData(allRes.BP.Fisher, wb = wb, sheet = sheet.name, rowNames = F)
+      resultFisher.GOtype <- runTest(GOdata.GOtype, algorithm = "classic", statistic = "fisher")
+      resultFisher.GOtype
+      assign(paste("resultFisher", GOtype, sep = "."), value = resultFisher.GOtype)
+      resultKS.GOtype <- runTest(GOdata.GOtype, algorithm = "classic", statistic = "ks")
+      resultKS.GOtype
+      assign(paste("resultKS", GOtype, sep = "."), value = resultKS.GOtype)
+      resultKS.elim.GOtype <- tryCatch(runTest(GOdata.GOtype, algorithm = "elim", statistic = "ks"), error = function(e){NULL})
+      resultKS.elim.GOtype
+      assign(paste("resultKS.elim", GOtype, sep = "."), value = resultKS.elim.GOtype)
+      if(!is.null(resultKS.elim.GOtype)) {
+        allRes.GOtype.classicKS <- GenTable(GOdata.GOtype, classicFisher = resultFisher.GOtype,
+                                            classicKS = resultKS.GOtype, elimKS = resultKS.elim.GOtype,
+                                            orderBy = "classicKS", ranksOf = "classicFisher", topNodes = nodesn.GOtype)
+        allRes.GOtype.elimKS <- GenTable(GOdata.GOtype, classicFisher = resultFisher.GOtype,
+                                         classicKS = resultKS.GOtype, elimKS = resultKS.elim.GOtype,
+                                         orderBy = "elimKS", ranksOf = "classicFisher", topNodes = nodesn.GOtype)
+        allRes.GOtype.Fisher <- GenTable(GOdata.GOtype, classicFisher = resultFisher.GOtype,
+                                         classicKS = resultKS.GOtype, elimKS = resultKS.elim.GOtype,
+                                         orderBy = "classicFisher", ranksOf = "classicFisher", topNodes = nodesn.GOtype)} else
+                                         {
+                                           allRes.GOtype.classicKS <- GenTable(GOdata.GOtype, classicFisher = resultFisher.GOtype,
+                                                                               classicKS = resultKS.GOtype,
+                                                                               orderBy = "classicKS", ranksOf = "classicFisher", topNodes = nodesn.GOtype)
+                                           allRes.GOtype.Fisher <- GenTable(GOdata.GOtype, classicFisher = resultFisher.GOtype,
+                                                                            classicKS = resultKS.GOtype,
+                                                                            orderBy = "classicFisher", ranksOf = "classicFisher", topNodes = nodesn.GOtype)
+                                         }
+      geneSig <- geneList[topDiffGenes(geneList)]
       
-      sheet.name <- "GO-top_50.CC-classicKS"
-      addWorksheet(wb = wb, sheetName = sheet.name)
-      writeData(allRes.CC.classicKS, wb = wb, sheet = sheet.name, rowNames = F)
+      AnnotatedGenes.GOtype.classicKS <- sapply(allRes.GOtype.classicKS$GO.ID, function(x) { as.character(unlist(genesInTerm(object = GOdata.GOtype, whichGO = x)))})
+      genes_with_GO_term <- function(x) {AnnotatedGenes.GOtype.classicKS[[x]][AnnotatedGenes.GOtype.classicKS[[x]] %in% names(geneSig)]}
+      GeneList.GOtype.classicKS <- sapply(allRes.GOtype.classicKS$GO.ID,genes_with_GO_term)
       
-      sheet.name <- "GO-top_50.CC-elimKS"
-      addWorksheet(wb = wb, sheetName = sheet.name)
-      writeData(allRes.CC.elimKS, wb = wb, sheet = sheet.name, rowNames = F)
+      sink(paste("GO_top50-significant_genes.", GOtype, ".classicKS",".(",Indfactor,").",suffix,".txt", sep = ""))
+
+      print(GeneList.GOtype.classicKS)
+      sink()
+      if(exists("allRes.GOtype.elimKS")) {  
+        AnnotatedGenes.GOtype.elimKS <- sapply(allRes.GOtype.elimKS$GO.ID, function(x) { as.character(unlist(genesInTerm(object = GOdata.GOtype, whichGO = x)))})
+        genes_with_GO_term <- function(x) {AnnotatedGenes.GOtype.elimKS[[x]][AnnotatedGenes.GOtype.elimKS[[x]] %in% names(geneSig)]}
+        GeneList.GOtype.elimKS <- sapply(allRes.GOtype.elimKS$GO.ID,genes_with_GO_term)
+
+        sink(paste("GO_top50-significant_genes.", GOtype, ".elimKS",".(",Indfactor,").",suffix,".txt", sep = ""))
+
+        print(GeneList.GOtype.elimKS)
+        sink()
+      }
+      AnnotatedGenes.GOtype.Fisher <- sapply(allRes.GOtype.Fisher$GO.ID, function(x) { as.character(unlist(genesInTerm(object = GOdata.GOtype, whichGO = x)))})
+      genes_with_GO_term <- function(x) {AnnotatedGenes.GOtype.Fisher[[x]][AnnotatedGenes.GOtype.Fisher[[x]] %in% names(geneSig)]}
+      GeneList.GOtype.Fisher <- sapply(allRes.GOtype.Fisher$GO.ID,genes_with_GO_term)
+
+      sink(paste("GO_top50-significant_genes.", GOtype, ".Fisher",".(",Indfactor,").",suffix,".txt", sep = ""))
+
+      print(GeneList.GOtype.Fisher)
+      sink()
       
-      sheet.name <- "GO-top_50.CC-Fisher"
+      sheet.name <- paste("GO-top_50", GOtype, "classicKS", sep = ".")
       addWorksheet(wb = wb, sheetName = sheet.name)
-      writeData(allRes.CC.Fisher, wb = wb, sheet = sheet.name, rowNames = F)
+      writeData(allRes.GOtype.classicKS, wb = wb, sheet = sheet.name, rowNames = F)
       
-      sheet.name <- "GO-top_50.MF-classicKS"
+      sheet.name <- paste("GO-top_50", GOtype, "elimKS", sep = ".")
       addWorksheet(wb = wb, sheetName = sheet.name)
-      writeData(allRes.MF.classicKS, wb = wb, sheet = sheet.name, rowNames = F)
       
-      sheet.name <- "GO-top_50.MF-elimKS"
+      if(exists("allRes.GOtype.elimKS")) {
+        writeData(allRes.GOtype.elimKS, wb = wb, sheet = sheet.name, rowNames = F)
+      }    
+      sheet.name <- paste("GO-top_50", GOtype, "Fisher", sep = ".")
       addWorksheet(wb = wb, sheetName = sheet.name)
-      writeData(allRes.MF.elimKS, wb = wb, sheet = sheet.name, rowNames = F)
-      
-      sheet.name <- "GO-top_50.MF-Fisher"
-      addWorksheet(wb = wb, sheetName = sheet.name)
-      writeData(allRes.MF.Fisher, wb = wb, sheet = sheet.name, rowNames = F)
-      
+      writeData(allRes.GOtype.Fisher, wb = wb, sheet = sheet.name, rowNames = F)
+      suppressWarnings(rm(resultKS.elim.GOtype, allRes.GOtype.elimKS))
+    }
+
       saveWorkbook(wb, file = paste("GO-top_50",".(",Indfactor,").",suffix,".xlsx", sep = ""), overwrite = T)
-    }
-    
-    if (length(args)==14) {
+
       pdf(paste("GO-p-values_comparison",".(",Indfactor,").",suffix,".pdf", sep = ""))
-    } 
-    pValue.classic <- score(resultKS.BP)
-    pValue.elim <- score(resultKS.elim.BP)[names(pValue.classic)]
-    gstat <- termStat(GOdata.BP, names(pValue.classic))
-    gSize <- gstat$Annotated / max(gstat$Annotated) * 4
-    gCol <- colMap(gstat$Significant)
-    plot(x=pValue.classic, y=pValue.elim, xlab = "p-value - KS test (classic)", ylab = "p-value - KS test (elim)", pch = 19, cex = gSize, col = gCol, title(main="Gene ontology analysis (Biological process)"))
-    
-    pValue.classic <- score(resultKS.CC)
-    pValue.elim <- score(resultKS.elim.CC)[names(pValue.classic)]
-    gstat <- termStat(GOdata.CC, names(pValue.classic))
-    gSize <- gstat$Annotated / max(gstat$Annotated) * 4
-    gCol <- colMap(gstat$Significant)
-    plot(x=pValue.classic, y=pValue.elim, xlab = "p-value - KS test (classic)", ylab = "p-value - KS test (elim)", pch = 19, cex = gSize, col = gCol, title(main="Gene ontology analysis (Cellular component)"))
-    
-    pValue.classic <- score(resultKS.MF)
-    pValue.elim <- score(resultKS.elim.MF)[names(pValue.classic)]
-    gstat <- termStat(GOdata.MF, names(pValue.classic))
-    gSize <- gstat$Annotated / max(gstat$Annotated) * 4
-    gCol <- colMap(gstat$Significant)
-    plot(x=pValue.classic, y=pValue.elim, xlab = "p-value - KS test (classic)", ylab = "p-value - KS test (elim)", pch = 19, cex = gSize, col = gCol, title(main="Gene ontology analysis (Molecular function)"))
+
+    for(GOtype in c("BP", "CC", "MF")) {
+      if(!is.null(paste("resultKS.elim", GOtype, sep = "."))) {
+        pValue.classic <- score(get(paste("resultKS", GOtype, sep = ".")))
+        pValue.elim <- score(get(paste("resultKS.elim", GOtype, sep = ".")))[names(pValue.classic)]
+        gstat <- termStat(get(paste("GOdata", GOtype, sep = ".")), names(pValue.classic))
+        gSize <- gstat$Annotated / max(gstat$Annotated) * 4
+        gCol <- colMap(gstat$Significant)
+        plot(x=pValue.classic, y=pValue.elim, xlab = "p-value - KS test (classic)", ylab = "p-value - KS test (elim)", pch = 19, cex = gSize, col = gCol, title(main=paste("Gene ontology analysis", GOtype, sep = " - ")))
+      } else {plot.new() + plot.window(xlim=c(-5,5), ylim=c(-5,5)); title(main=paste("Gene ontology", GOtype, "resultKS.elim ERROR", sep = " - "))}
+    }
+    dev.off()
+
+    pdf(paste("GO-diagrams_top_10_test_KS_classic",".(",Indfactor,").",suffix,".pdf", sep = ""))
+
+    for(GOtype in c("BP", "CC", "MF")) {
+      tryCatch(expr={showSigOfNodes(get(paste("GOdata", GOtype, sep = ".")), score(get(paste("resultKS",GOtype, sep = "."))), firstSigNodes = 10, useInfo ='all'); title(main=paste("Gene ontology", GOtype, sep = " - "))},
+               error={function(e) {plot.new() + plot.window(xlim=c(-5,5), ylim=c(-5,5)); title(main=paste("Gene ontology", GOtype, "ERROR", sep = " - "))}})
+    }
     dev.off()
     
-    if (length(args)==14) {
-      pdf(paste("GO-diagrams_top_10_test_KS_classic",".(",Indfactor,").",suffix,".pdf", sep = ""))
+    pdf(paste("GO-diagrams_top_10_test_KS_elim",".(",Indfactor,").",suffix,".pdf", sep = ""))
+
+    for(GOtype in c("BP", "CC", "MF")) {
+      tryCatch(expr={showSigOfNodes(get(paste("GOdata", GOtype, sep = ".")), score(get(paste("resultKS.elim", GOtype, sep = "."))), firstSigNodes = 10, useInfo ='all'); title(main=paste("Gene ontology", GOtype, sep = " - "))},
+               error={function(e) {plot.new() + plot.window(xlim=c(-5,5), ylim=c(-5,5)); title(main=paste("Gene ontology", GOtype, "ERROR", sep = " - "))}})
     }
-    tryCatch(expr={showSigOfNodes(GOdata.BP, score(resultKS.BP), firstSigNodes = 10, useInfo ='all'); title(main="Gene ontology (biological processes)")},
-             error={function(e) {plot.new() + plot.window(xlim=c(-5,5), ylim=c(-5,5)); title(main="Gene ontology (biological processes): ERROR")}})	
-    tryCatch(expr={showSigOfNodes(GOdata.CC, score(resultKS.CC), firstSigNodes = 10, useInfo ='all'); title(main="Gene ontology (cellular components)")},
-             error={function(e) {plot.new() + plot.window(xlim=c(-5,5), ylim=c(-5,5)); title(main="Gene ontology (cellular components): ERROR")}})
-    tryCatch(expr={showSigOfNodes(GOdata.MF, score(resultKS.MF), firstSigNodes = 10, useInfo ='all'); title(main="Gene ontology (molecular functions)")},
-             error={function(e) {plot.new() + plot.window(xlim=c(-5,5), ylim=c(-5,5)); title(main="Gene ontology (molecular functions): ERROR")}})
     dev.off()
     
-    if (length(args)==14) {
-      pdf(paste("GO-diagrams_top_10_test_KS_elim",".(",Indfactor,").",suffix,".pdf", sep = ""))
+    pdf(paste("GO-diagrams_top_10_test_Fisher",".(",Indfactor,").",suffix,".pdf", sep = ""))
+
+    for(GOtype in c("BP", "CC", "MF")) {
+      tryCatch(expr={showSigOfNodes(get(paste("GOdata", GOtype, sep = ".")), score(get(paste("resultFisher", GOtype, sep = "."))), firstSigNodes = 10, useInfo ='all'); title(main=paste("Gene ontology", GOtype, sep = " - "))},
+               error={function(e) {plot.new() + plot.window(xlim=c(-5,5), ylim=c(-5,5)); title(main=paste("Gene ontology", GOtype, "ERROR", sep = " - "))}})
     }
-    tryCatch(expr={showSigOfNodes(GOdata.BP, score(resultKS.elim.BP), firstSigNodes = 10, useInfo ='all'); title(main="Gene ontology (biological processes)")},
-             error={function(e) {plot.new() + plot.window(xlim=c(-5,5), ylim=c(-5,5)); title(main="Gene ontology (biological processes): ERROR")}})	
-    tryCatch(expr={showSigOfNodes(GOdata.CC, score(resultKS.elim.CC), firstSigNodes = 10, useInfo ='all'); title(main="Gene ontology (cellular components)")},
-             error={function(e) {plot.new() + plot.window(xlim=c(-5,5), ylim=c(-5,5)); title(main="Gene ontology (cellular components): ERROR")}})
-    tryCatch(expr={showSigOfNodes(GOdata.MF, score(resultKS.elim.MF), firstSigNodes = 10, useInfo ='all'); title(main="Gene ontology (molecular functions)")},
-             error={function(e) {plot.new() + plot.window(xlim=c(-5,5), ylim=c(-5,5)); title(main="Gene ontology (molecular functions): ERROR")}})
-    dev.off()
-    
-    if (length(args)==14) {
-      pdf(paste("GO-diagrams_top_10_test_Fisher",".(",Indfactor,").",suffix,".pdf", sep = ""))
-    }
-    tryCatch(expr={showSigOfNodes(GOdata.BP, score(resultFisher.BP), firstSigNodes = 10, useInfo ='all'); title(main="Gene ontology (biological processes)")},
-             error={function(e) {plot.new() + plot.window(xlim=c(-5,5), ylim=c(-5,5)); title(main="Gene ontology (biological processes): ERROR")}})	
-    tryCatch(expr={showSigOfNodes(GOdata.CC, score(resultFisher.CC), firstSigNodes = 10, useInfo ='all'); title(main="Gene ontology (cellular components)")},
-             error={function(e) {plot.new() + plot.window(xlim=c(-5,5), ylim=c(-5,5)); title(main="Gene ontology (cellular components): ERROR")}})
-    tryCatch(expr={showSigOfNodes(GOdata.MF, score(resultFisher.MF), firstSigNodes = 10, useInfo ='all'); title(main="Gene ontology (molecular functions)")},
-             error={function(e) {plot.new() + plot.window(xlim=c(-5,5), ylim=c(-5,5)); title(main="Gene ontology (molecular functions): ERROR")}})
     dev.off()
   }
   f.Reactome <- function(group) {
     library("ReactomePA")
     library("ggplot2")
-    args <- seq(1,14)
     subgroups <- unlist(strsplit(group, split = "_vs_"))
     for(impact in impacts) {
       all.genes <- get(paste("allGenes.list", groupid, impact, sep = "."))[[group]]
@@ -503,20 +367,14 @@ f.vep.comparison <- function(Robject1, Robject2) {
       
       pdffiles <- sort(list.files(pattern = paste("Reactome analysis", paste0("(", paste(c(subgroups, "ZZZ"), collapse = "|"),")"), make.names(groupid), paste("impact", impact, sep = ":"), "[0-9#]+", "pdf", sep = ".")))
       library(pdftools)
-      if (length(args)==14) {
-        reactome.pdf.name = paste0("Reactome_analysis.", group, ".", groupid, ".", paste("impact", impact, sep = ":"), ".(",Indfactor,").",runid,".pdf", sep = "")
-      } else {
-        reactome.pdf.name = paste0("Reactome_analysis.", group, ".", groupid, ".", paste("impact", impact, sep = ":"), ".(",Indfactor,"+",Indfactor2,").",runid,".pdf", sep = "")
-      }
+
+      reactome.pdf.name = paste0("Reactome_analysis.", Indfactor, ".", group, ".", groupid, ".", paste("impact", impact, sep = ":"), ".", runid,".pdf", sep = "")
+
       pdf_combine(pdffiles, output = reactome.pdf.name)
       unlink(pdffiles)
       
-      if (length(args)==14) {
-        reactome.xlsx.name <- paste0("Reactome_analysis.", group, ".", groupid, ".", paste("impact", impact, sep = ":"), ".(",Indfactor,").",runid,".xlsx", sep = "")
-      } else {
-        reactome.xlsx.name <- paste0("Reactome_analysis.", group, ".", groupid, ".", paste("impact", impact, sep = ":"), ".(",Indfactor,"+",Indfactor2,").",runid,".xlsx", sep = "")
-      }
-      
+      reactome.xlsx.name <- paste0("Reactome_analysis.", Indfactor, ".", group, ".", groupid, ".", paste("impact", impact, sep = ":"), ".", runid,".xlsx", sep = "")
+
       unlink(reactome.xlsx.name)
       
       wb <- createWorkbook()
@@ -581,6 +439,12 @@ f.vep.comparison <- function(Robject1, Robject2) {
   Robject1.list <<- load(Robject1, envir = .GlobalEnv)
   Robject2.list <<- load(Robject2, envir = .GlobalEnv)
   
+  if(arguments[6] != "NA") {
+  con <- file(arguments[6])
+  gene.signature <- readLines(con = con)
+  gene.signature.name <- gsub(arguments[6], pattern = "^.*\\/", replacement = "")
+  close(con)}
+  
   anno1 <- paste("anno", "SNP", groupid, "HIGH", sep = ".")
   anno2 <- paste("anno", "SNP", groupid, "X.HIGH.MODERATE.", sep = ".")
   anno3 <- paste("anno", "NON_SNP", groupid, "HIGH", sep = ".")
@@ -601,15 +465,48 @@ f.vep.comparison <- function(Robject1, Robject2) {
   needed.objects <- c(paste("res1.bool.SNP", groupid, "X.HIGH.MODERATE.", sep = "."), 
                       paste("res1.bool.SNP", groupid, "HIGH", sep = "."),
                       paste("res1.bool.NON_SNP", groupid, "X.HIGH.MODERATE.", sep = "."), 
-                      paste("res1.bool.NON_SNP", groupid, "HIGH", sep = "."))
+                      paste("res1.bool.NON_SNP", groupid, "HIGH", sep = "."),
+                      
+                      paste("res1.SNP", groupid, "X.HIGH.MODERATE.", sep = "."), 
+                      paste("res1.SNP", groupid, "HIGH", sep = "."),
+                      paste("res1.NON_SNP", groupid, "X.HIGH.MODERATE.", sep = "."), 
+                      paste("res1.NON_SNP", groupid, "HIGH", sep = "."),
+                      
+                      paste("new.muts.SNP", groupid, "X.HIGH.MODERATE.", sep = "."), 
+                      paste("new.muts.SNP", groupid, "HIGH", sep = "."),
+                      paste("new.muts.NON_SNP", groupid, "X.HIGH.MODERATE.", sep = "."), 
+                      paste("new.muts.NON_SNP", groupid, "HIGH", sep = ".")
+                      )
 
   if(! all(sapply(needed.objects, exists))) {stop(paste("At least one needed object does not exist,", "groupid:", groupid, ", objects:", paste(needed.objects[!sapply(needed.objects, exists)], collapse = ", ")))}
   
   wb <- createWorkbook()
-  
+
   for(impact in impacts) {
     impact.name <- sub(impact, pattern = "X.HIGH.MODERATE.", replacement = "HIGH_or_MODERATE")  
     
+    df.snp.name <- paste("res1", "SNP", groupid, impact, sep = ".")
+    colSums.snp.df <- as.data.frame(colSums(get(df.snp.name)))
+    colSums.snp.df[["Genes"]] <- rownames(colSums.snp.df)
+    
+    df.snp.new.muts.name <- paste("new.muts", "SNP", groupid, impact, sep = ".")
+    unique.mut.genes.snp <- unique(get(df.snp.new.muts.name)[!duplicated(get(df.snp.new.muts.name)[,"HGVSg"]),][,"SYMBOL"])
+    unique.mut.genes.snp.numbers <- foreach(gene = unique.mut.genes.snp, .combine = c) %dopar% {sum(get(df.snp.new.muts.name)[!duplicated(get(df.snp.new.muts.name)[,"HGVSg"]),][,"SYMBOL"] == gene)}
+    names(unique.mut.genes.snp.numbers) <- unique.mut.genes.snp
+    unique.mut.genes.snp.numbers.df <- as.data.frame(unique.mut.genes.snp.numbers)
+    unique.mut.genes.snp.numbers.df[["Genes"]] <- rownames(unique.mut.genes.snp.numbers.df)
+    
+    df.non_snp.name <- paste("res1", "NON_SNP", groupid, impact, sep = ".")
+    colSums.non_snp.df <- as.data.frame(colSums(get(df.non_snp.name)))
+    colSums.non_snp.df[["Genes"]] <- rownames(colSums.non_snp.df)
+    
+    df.non_snp.new.muts.name <- paste("new.muts", "NON_SNP", groupid, impact, sep = ".")
+    unique.mut.genes.non_snp <- unique(get(df.non_snp.new.muts.name)[!duplicated(get(df.non_snp.new.muts.name)[,"HGVSg"]),][,"SYMBOL"])
+    unique.mut.genes.non_snp.numbers <- foreach(gene = unique.mut.genes.non_snp, .combine = c) %dopar% {sum(get(df.non_snp.new.muts.name)[!duplicated(get(df.non_snp.new.muts.name)[,"HGVSg"]),][,"SYMBOL"] == gene)}
+    names(unique.mut.genes.non_snp.numbers) <- unique.mut.genes.non_snp
+    unique.mut.genes.non_snp.numbers.df <- as.data.frame(unique.mut.genes.non_snp.numbers)
+    unique.mut.genes.non_snp.numbers.df[["Genes"]] <- rownames(unique.mut.genes.non_snp.numbers.df)
+
     df.snp.name <- paste("res1.bool", "SNP", groupid, impact, sep = ".")
     df.non.snp.name <- paste("res1.bool", "NON_SNP", groupid, impact, sep = ".")
     res1.bool.snp <- get(df.snp.name)
@@ -640,7 +537,7 @@ f.vep.comparison <- function(Robject1, Robject2) {
     
     res1.bool.merged.sum[res1.bool.merged.sum == 2] <- 1
     res1.bool.merged.sum.t <- as.data.frame(t(res1.bool.merged.sum))
-    
+
     old.names <- colnames(res1.bool.merged.sum.t)[grepl(colnames(res1.bool.merged.sum.t), pattern = "^[0-9]+$")]
     if(length(old.names) > 0) {
     new.names <- mapIds(x = org.Hs.eg.db, keys = old.names, keytype = "ENTREZID", column = "ENSEMBL", multiVals = "first")
@@ -660,14 +557,21 @@ f.vep.comparison <- function(Robject1, Robject2) {
     rownames(res1.bool.merged.sum.t) <- res1.bool.merged.sum.t[["Row.names"]]
     res1.bool.merged.sum.t <- res1.bool.merged.sum.t[,-1]}
     
+    no.mut.samples.df <- as.data.frame(colSums(res1.bool.merged.sum.t))
+    no.mut.samples.df[["Genes"]] <- rownames(no.mut.samples.df)
+    freq.mut.samples.df <- as.data.frame(colSums(res1.bool.merged.sum.t)/nrow(res1.bool.merged.sum.t))
+    freq.mut.samples.df[["Genes"]] <- rownames(freq.mut.samples.df)
+    
     if(!all(sub(rownames(res1.bool.merged.sum.t), pattern = "#.*$", replacement = "") == rownames(anno))) {stop("Samples do not match annotations.")}
     res1.bool.merged.sum.t.list <- as.list(with(res1.bool.merged.sum.t, by(data = res1.bool.merged.sum.t, INDICES = anno[[Indfactor]], FUN = print, simplify = F)))
+    res1.bool.merged.sum.t.list <- res1.bool.merged.sum.t.list[sapply(res1.bool.merged.sum.t.list, function(x){!is.null(x)})]
     res1.bool.merged.sum.t.comb <- foreach(subset1 = res1.bool.merged.sum.t.list, .combine = cbind) %do% {data.frame(colSums(subset1), colMeans(subset1), colSds(as.matrix(subset1)))}
     colnames(res1.bool.merged.sum.t.comb) <- as.vector(outer(c("Sum", "Mean", "SD"), names(res1.bool.merged.sum.t.list), paste, sep="."))
     res1.bool.merged.sum.t.comb.res <- reshape(res1.bool.merged.sum.t.comb, direction = "long", ids = rownames(res1.bool.merged.sum.t.comb), varying = colnames(res1.bool.merged.sum.t.comb))
     res1.bool.merged.sum.t.comb.res[is.na(res1.bool.merged.sum.t.comb.res)] <- 0
     res1.bool.merged.sum.t.comb.res <- setNames(res1.bool.merged.sum.t.comb.res, nm = c(Indfactor, "Sum", "Mean", "SD", "Gene"))
     res1.bool.merged.sum.t.comb.res <- res1.bool.merged.sum.t.comb.res[, c(5, 1:4), drop = F]
+    res1.bool.merged.sum.t.comb.res[[Indfactor]] <- as.factor(res1.bool.merged.sum.t.comb.res[[Indfactor]])
     
     sheet.name <- paste("Mut.freq.sum", impact.name, sep = ".")
     addWorksheet(wb = wb, sheetName = sheet.name)
@@ -694,13 +598,13 @@ f.vep.comparison <- function(Robject1, Robject2) {
     names(res1.bool.merged.sum.t.colSums.list) <- level.names
     
     rownames(res1.bool.merged.sum.t) <- sub(rownames(res1.bool.merged.sum.t), pattern = "#.*$", replacement = "")
-    write.table(x = res1.bool.merged.sum.t, row.names = T, col.names = NA, quote = F, sep = ";", file = paste(runid, "VEP.analysis.results", groupid, "impact", sub(impact, pattern = "X.HIGH.MODERATE.", replacement = "HIGH_or_MODERATE"), "csv", sep = "."))
+    write.table(x = res1.bool.merged.sum.t, row.names = T, col.names = NA, quote = F, sep = ";", file = paste(runid, "VEP.analysis.results", groupid, Indfactor, "impact", sub(impact, pattern = "X.HIGH.MODERATE.", replacement = "HIGH_or_MODERATE"), "csv", sep = "."))
     
     if(length(level.names) > 1) {
       combinations <- combn(level.names, m = 2)
       comp.list <- NULL
       for(i in seq(1, ncol(combinations))) {
-        comb.res.list.name <- paste("comb.res.list", groupid, "impact", impact, paste(combinations[,i], collapse = "_vs_"), sep = ".")
+        comb.res.list.name <- paste("comb.res.list", groupid, Indfactor, paste(combinations[,i], collapse = "_vs_"), "impact", impact, sep = ".")
         comb.res.list.tmp <- foreach(gr1 = combinations[, i][1], gr2 = combinations[, i][2]) %do% {
           l1.tmp <- foreach(gene = geneList) %dopar% {
             vec1 <- res1.bool.merged.sum.t.colSums.list[[gr1]][rownames(res1.bool.merged.sum.t.colSums.list[[gr1]]) == gene, , drop = F]
@@ -732,7 +636,7 @@ f.vep.comparison <- function(Robject1, Robject2) {
       }
       
       chi.fisher.res <- foreach(comp = comp.list) %do% {
-        comp.name <- paste("comb.res.list", groupid, "impact", impact, comp, sep = ".")
+        comp.name <- paste("comb.res.list", groupid, Indfactor, comp, "impact", impact, sep = ".")
         geneListNew <- NULL
         for(i in seq(1, length(geneList))) {
           geneListNew <- append(geneListNew, values = (grep(names(get(comp.name)[[comp]]), pattern = paste(geneList[i], "(1|2)", sep = "#"), value = T)))
@@ -746,7 +650,7 @@ f.vep.comparison <- function(Robject1, Robject2) {
       names(chi.fisher.res) <- comp.list
       chi.fisher.res.name <- paste("chi.fisher.res", groupid, "impact", impact, sep = ".")
       assign(chi.fisher.res.name, value = chi.fisher.res)
-      sink(file = paste(runid, sub(sub(chi.fisher.res.name, pattern = "chi.fisher.res.", replacement = "Chi_square_or_Fisher_exact_tests."), groupid, pattern = "X.HIGH.MODERATE.", replacement = "HIGH_or_MODERATE"), "txt", sep = "."))
+      sink(file = paste(runid, sub(sub(chi.fisher.res.name, pattern = "chi.fisher.res.", replacement = "Chi_square_or_Fisher_exact_tests."), Indfactor, groupid, pattern = "X.HIGH.MODERATE.", replacement = "HIGH_or_MODERATE"), "txt", sep = "."))
       print(get(chi.fisher.res.name))
       sink()
       
@@ -788,7 +692,7 @@ f.vep.comparison <- function(Robject1, Robject2) {
       sigGenes.list.name <- paste("sigGenes.list", groupid, impact, sep = ".")
       assign(sigGenes.list.name, value = sigGenes.list)
       
-      sink(file = paste(runid, "Significant_genes", groupid, "impact", sub(impact, pattern = "X.HIGH.MODERATE.", replacement = "HIGH_or_MODERATE"), paste("fdr", fdr, sep = ":"), "txt", sep = "."))
+      sink(file = paste(runid, "Significant_genes", Indfactor, groupid, "impact", sub(impact, pattern = "X.HIGH.MODERATE.", replacement = "HIGH_or_MODERATE"), paste("fdr", fdr, sep = ":"), "txt", sep = "."))
       cat("Genes with at least one mutation in at least one sample (the list of genes submitted to the topGO app):\n")
       cat(geneList, sep = ", ")
       cat("\n\nGenes with significant differences in mutation frequencies between the displayed groups (p-values of the Chi-square test or the Fisher exact test are included). Values after the hash sign(#) show in which group the frequency of mutations is higher (1 and 2 stand for the group before and after 'vs', respectively):\n")
@@ -796,7 +700,7 @@ f.vep.comparison <- function(Robject1, Robject2) {
       sink()
       
       for(group in comp.list) {
-        group.dir <- paste(group, paste("fdr", fdr, sep = ":"), sep = ".")
+        group.dir <- paste(Indfactor, group, paste("fdr", fdr, sep = ":"), sep = ".")
         dir.create(group.dir)
         setwd(group.dir)
         all.genes <- allGenes.list[[group]]
@@ -807,17 +711,42 @@ f.vep.comparison <- function(Robject1, Robject2) {
           try(f.topGO(geneList = all.genes, sigGenes = sig.genes))
         }
         setwd(workdir)
-      }}}}
+      }}
+    summary.table.list <- list(colSums.snp.df, unique.mut.genes.snp.numbers.df, colSums.non_snp.df, unique.mut.genes.non_snp.numbers.df, no.mut.samples.df, freq.mut.samples.df)
+    summary.table <- Reduce(function(x,y) merge(x = x, y = y, all = T, by.x = "Genes", by.y = "Genes"), summary.table.list)
+    summary.table <- setNames(summary.table, nm = c("Genes", paste0("SNP variants", " (", impact.name, ")"), paste0("New unique SNP variants", " (", impact.name, ")"), paste0("NON_SNP variants", " (", impact.name, ")"), paste0("New unique NON_SNP variants", " (", impact.name, ")"), paste0("Altered samples", " (", impact.name, ")"), paste0("Freq. of altered samples", " (", impact.name, ")")))
+    summary.table[is.na(summary.table)] <- 0
+    
+    summary.table.name <- paste("summary.table", impact.name, sep = ".")
+    assign(summary.table.name, value = summary.table)
+    }}
+  
+  if(length(ls(pattern = "summary\\.table\\.HIGH")) == 2) {
+    summary.table.final <- merge(x = summary.table.HIGH, y = summary.table.HIGH_or_MODERATE, by.x = "Genes", by.y = "Genes", all = T)
+    summary.table.final[is.na(summary.table.final)] <- 0
+    } else
+  if(length(ls(pattern = "summary\\.table\\.HIGH")) == 1) {
+    summary.table.final <- get(ls(pattern = "summary\\.table\\.HIGH"))}
+
+  if(exists("summary.table.final")) {
+    addWorksheet(wb = wb, sheetName = "Summary_table")
+    writeData(wb = wb, x = summary.table.final, sheet = "Summary_table")
+    if(exists("gene.signature")) {
+      summary.table.final.gene.signature <- summary.table.final[summary.table.final[["Genes"]] %in% gene.signature, , drop = F]
+      sheet.name <- substr(paste("Summary_table", gene.signature.name, sep = "."), 1,31)
+      addWorksheet(wb = wb, sheetName = sheet.name)
+      writeData(wb = wb, x = summary.table.final.gene.signature, sheet = sheet.name)
+    }}
 
   pdffiles2 <- list.files(pattern = paste0("^", runid, "\\.VEP.analysis.cumulative.res\\.", groupid, ".*", "\\.pdf$"))
-  pdf_combine(pdffiles2, output = paste(runid, "VEP.analysis.cumulative.results", groupid, "pdf", sep = "."))
+  pdf_combine(pdffiles2, output = paste(runid, "VEP.analysis.cumulative.results", groupid, Indfactor, "pdf", sep = "."))
   unlink(pdffiles2)
   
-  saveWorkbook(wb = wb, file = paste(runid, "VEP.analysis.cumulative.results", groupid, "xlsx", sep = "."), overwrite = T)
+  saveWorkbook(wb = wb, file = gsub(paste(runid, "VEP.analysis.cumulative.results", groupid, Indfactor, if(exists("gene.signature")){paste0("gene_signature:", gene.signature.name)}, "xlsx", sep = "."), pattern = "\\.\\.", replacement = "."), overwrite = T)
   
   if(length(level.names) > 1) {
     for(group in comp.list) {
-      group.dir <- paste(group, paste("fdr", fdr, sep = ":"), sep = ".")
+      group.dir <- paste(Indfactor, group, paste("fdr", fdr, sep = ":"), sep = ".")
       dir.create(group.dir)
       setwd(group.dir)
       f.Reactome(group = group)
@@ -840,7 +769,7 @@ fdr <- as.logical(arguments2[8])
 
 registerDoMC(threads)
 
-csvtable.full <- read.table(file = csvfile, sep = ";", header = T, stringsAsFactors = F)
+csvtable.full <- fread(file = csvfile, sep = ";", header = T, stringsAsFactors = F)
 csvtable.full <- csvtable.full[!grepl(csvtable.full[[Indfactor]], pattern = "^([[:space:]]?)+$"),]
 csvtable.full <- csvtable.full[!is.na(csvtable.full[[Indfactor]]),]
 if(pairedSamples == "TRUE") {csvtable.full <- csvtable.full[!is.na(csvtable.full[[pair.ind]]),]}
