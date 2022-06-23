@@ -18,11 +18,13 @@ library(pdftools)
 library(AnnotationDbi)
 library(org.Hs.eg.db)
 library(limma)
+library(topGO)
+library(ReactomePA)
+library(clusterProfiler)
 
 f.vep.comparison <- function(Robject1, Robject2) {
   f.topGO <- function(geneList, sigGenes) {
     topDiffGenes <- function(x) {x %in% sigGenes}
-    library("topGO")
     colMap <- function(x) {
       .col <- rep(rev(heat.colors(length(unique(x)))), time = table(x))
       return(.col[match(1:length(x), order(x))])
@@ -153,8 +155,6 @@ f.vep.comparison <- function(Robject1, Robject2) {
     dev.off()
   }
   f.Reactome <- function(group) {
-    library("ReactomePA")
-    library("ggplot2")
     subgroups <- unlist(strsplit(group, split = "_vs_"))
     for(impact in impacts) {
       all.genes <- get(paste("allGenes.list", groupid, impact, sep = "."))[[group]]
@@ -170,7 +170,7 @@ f.vep.comparison <- function(Robject1, Robject2) {
       if(impact == "X.HIGH.MODERATE.") {impact <- "HIGH_or_MODERATE"}
       
       for(index in c(1,2)) {
-        mut.subgroup <- subgroups[index]
+        var.subgroup <- subgroups[index]
         all.genes <- get(all.genes.list[index])
         sig.genes <- get(sig.genes.list[index])
         if(length(all.genes) > 0 & length(sig.genes) > 0) {
@@ -200,41 +200,41 @@ f.vep.comparison <- function(Robject1, Robject2) {
                                                       column="SYMBOL",
                                                       keytype="ENTREZID",
                                                       multiVals="first"))}
-          geneList.df.name <- paste("geneList", mut.subgroup, groupid, paste( "impact", sub(impact, pattern = "X.HIGH.MODERATE.", replacement = "HIGH_or_MODERATE"), sep = ":"), sep = ".")
+          geneList.df.name <- paste("geneList", var.subgroup, groupid, paste( "impact", sub(impact, pattern = "X.HIGH.MODERATE.", replacement = "HIGH_or_MODERATE"), sep = ":"), sep = ".")
           assign(geneList.df.name, value = geneList.df)
           
           de <- names(geneList)
           if (length(de) > 0) {
-            de.name <- paste("de", mut.subgroup, groupid, paste( "impact", sub(impact, pattern = "X.HIGH.MODERATE.", replacement = "HIGH_or_MODERATE"), sep = ":"), sep = ".")
+            de.name <- paste("de", var.subgroup, groupid, paste( "impact", sub(impact, pattern = "X.HIGH.MODERATE.", replacement = "HIGH_or_MODERATE"), sep = ":"), sep = ".")
             assign(de.name, value = de)
             
             temp.x <- enrichPathway(gene=get(de.name), organism = "human", pAdjustMethod = "BH", pvalueCutoff=0.05, readable=TRUE)
-            x.name <- paste("x", mut.subgroup, groupid, paste( "impact", sub(impact, pattern = "X.HIGH.MODERATE.", replacement = "HIGH_or_MODERATE"), sep = ":"), sep = ".")
-            x.name.df <- paste("x", mut.subgroup, groupid, paste( "impact", sub(impact, pattern = "X.HIGH.MODERATE.", replacement = "HIGH_or_MODERATE"), sep = ":"), "df", sep = ".")
+            x.name <- paste("x", var.subgroup, groupid, paste( "impact", sub(impact, pattern = "X.HIGH.MODERATE.", replacement = "HIGH_or_MODERATE"), sep = ":"), sep = ".")
+            x.name.df <- paste("x", var.subgroup, groupid, paste( "impact", sub(impact, pattern = "X.HIGH.MODERATE.", replacement = "HIGH_or_MODERATE"), sep = ":"), "df", sep = ".")
             assign(x.name, value = temp.x)
             rm(temp.x)
-            try(p1 <- dotplot(get(x.name), showCategory=50) + labs(title = paste("Pathway enrichment analysis", paste(mut.subgroup, "upmutated"), sep = "-")) + theme(plot.title = element_text(hjust = 0.5, face = "bold")))
-            p1.name <- paste('p1', mut.subgroup, groupid, paste( "impact", sub(impact, pattern = "X.HIGH.MODERATE.", replacement = "HIGH_or_MODERATE"), sep = ":"), sep = ".")
+            try(p1 <- dotplot(get(x.name), showCategory=50) + labs(title = paste("Pathway enrichment analysis", paste(var.subgroup, "up-altered"), sep = "-")) + theme(plot.title = element_text(hjust = 0.5, face = "bold")))
+            p1.name <- paste('p1', var.subgroup, groupid, paste( "impact", sub(impact, pattern = "X.HIGH.MODERATE.", replacement = "HIGH_or_MODERATE"), sep = ":"), sep = ".")
             
             if(exists('p1')) {if(nrow(p1$data) > 0) {assign(p1.name, value = p1)
               p1.pathways <- as.character(p1$data[order(p1$data$GeneRatio, decreasing = T),][["Description"]][1:if(nrow(p1$data)<3){nrow(p1$data)} else {3}])
               if(index == 1) {
-                pdf(paste("Reactome analysis", mut.subgroup, groupid, paste("impact", impact, sep = ":"), "01#1", "pdf", sep = "."), height = 10, width = 13)} else if(index == 2) {
-                  pdf(paste("Reactome analysis", mut.subgroup, groupid, paste("impact", impact, sep = ":"), "07#1", "pdf", sep = "."), height = 10, width = 13)}
+                pdf(paste("Reactome analysis", var.subgroup, groupid, paste("impact", impact, sep = ":"), "01#1", "pdf", sep = "."), height = 10, width = 13)} else if(index == 2) {
+                  pdf(paste("Reactome analysis", var.subgroup, groupid, paste("impact", impact, sep = ":"), "07#1", "pdf", sep = "."), height = 10, width = 13)}
               
               for(i in p1.pathways) {try(expr = {pp1 <- viewPathway(i)
-              pp1 <- pp1 + labs(title = paste(paste(mut.subgroup, "upmutated"), i, sep = ": ")) + theme(plot.title = element_text(face = "bold", hjust = 0.5))
+              pp1 <- pp1 + labs(title = paste(paste(var.subgroup, "up-altered"), i, sep = ": ")) + theme(plot.title = element_text(face = "bold", hjust = 0.5))
               print(pp1)})}
               dev.off()
             }}
-            try(p2 <- heatplot(get(x.name), showCategory = 50, foldChange = geneList) + labs(title = paste("Pathway enrichment heatmap", paste(mut.subgroup, "upmutated"), sep = "-"), subtitle = "(Info: Fold change values correspond to the -log10(p-values)") + theme(plot.title = element_text(hjust = 0.5, face = "bold"), plot.subtitle = element_text(hjust = 0.5), axis.text.x = element_text(angle = 90, vjust = 0.5), panel.grid.major.x  = element_line(color = "grey", linetype = "solid", size = 0.5), panel.grid.major.y  = element_line(color = "grey", linetype = "solid", size = 0.5)))
-            p2.name <- paste('p2', mut.subgroup, groupid, paste("impact", sub(impact, pattern = "X.HIGH.MODERATE.", replacement = "HIGH_or_MODERATE"), sep = ":"), sep = ".")
+            try(p2 <- heatplot(get(x.name), showCategory = 50, foldChange = geneList) + labs(title = paste("Pathway enrichment heatmap", paste(var.subgroup, "up-altered"), sep = "-"), subtitle = "(Info: Fold change values correspond to the -log10(p-values)") + theme(plot.title = element_text(hjust = 0.5, face = "bold"), plot.subtitle = element_text(hjust = 0.5), axis.text.x = element_text(angle = 90, vjust = 0.5), panel.grid.major.x  = element_line(color = "grey", linetype = "solid", size = 0.5), panel.grid.major.y  = element_line(color = "grey", linetype = "solid", size = 0.5)))
+            p2.name <- paste('p2', var.subgroup, groupid, paste("impact", sub(impact, pattern = "X.HIGH.MODERATE.", replacement = "HIGH_or_MODERATE"), sep = ":"), sep = ".")
             if(exists('p2')) {assign(p2.name, value = p2)}
-            try(p3 <- emapplot(get(x.name), showCategory = 50, color = "p.adjust") + labs(title = paste("Pathway enrichment map", paste(mut.subgroup, "upmutated"), sep = "-")) + theme(plot.title = element_text(hjust = 0.5, face = "bold")))
-            p3.name <- paste('p3', mut.subgroup, groupid, paste("impact", sub(impact, pattern = "X.HIGH.MODERATE.", replacement = "HIGH_or_MODERATE"), sep = ":"), sep = ".")
+            try(p3 <- emapplot(get(x.name), showCategory = 50, color = "p.adjust") + labs(title = paste("Pathway enrichment map", paste(var.subgroup, "up-altered"), sep = "-")) + theme(plot.title = element_text(hjust = 0.5, face = "bold")))
+            p3.name <- paste('p3', var.subgroup, groupid, paste("impact", sub(impact, pattern = "X.HIGH.MODERATE.", replacement = "HIGH_or_MODERATE"), sep = ":"), sep = ".")
             if(exists('p3')) {assign(p3.name, value = p3)}
-            try(p4 <- cnetplot(get(x.name), categorySize="qvalue", foldChange=geneList) + labs(title = paste("Complex associations map", paste(mut.subgroup, "upmutated"), sep = "-"), subtitle = "(Info: Fold change values correspond to the -log10(p-values)") + theme(plot.title = element_text(hjust = 0.5, face = "bold"), plot.subtitle = element_text(hjust = 0.5)))
-            p4.name <- paste('p4', mut.subgroup, groupid, paste( "impact", sub(impact, pattern = "X.HIGH.MODERATE.", replacement = "HIGH_or_MODERATE"), sep = ":"), sep = ".")
+            try(p4 <- cnetplot(get(x.name), categorySize="qvalue", foldChange=geneList) + labs(title = paste("Complex associations map", paste(var.subgroup, "up-altered"), sep = "-"), subtitle = "(Info: Fold change values correspond to the -log10(p-values)") + theme(plot.title = element_text(hjust = 0.5, face = "bold"), plot.subtitle = element_text(hjust = 0.5)))
+            p4.name <- paste('p4', var.subgroup, groupid, paste( "impact", sub(impact, pattern = "X.HIGH.MODERATE.", replacement = "HIGH_or_MODERATE"), sep = ":"), sep = ".")
             if(exists('p4')) {assign(p4.name, value = p4)}
             
             tmp.df <- as.data.frame(get(x.name))
@@ -242,22 +242,22 @@ f.vep.comparison <- function(Robject1, Robject2) {
             
             try({y <- gsePathway(geneList, organism = "human", pvalueCutoff = 0.05, pAdjustMethod = "BH", by = "fgsea")
             res.fgsea <- as.data.frame(y)
-            p5 <- emapplot(y, showCategory = 50, color = "p.adjust") + labs(title = paste("Gene set enrichment analysis", paste(mut.subgroup, "upmutated"), sep = "-")) + theme(plot.title = element_text(hjust = 0.5, face = "bold"))})
+            p5 <- emapplot(y, showCategory = 50, color = "p.adjust") + labs(title = paste("Gene set enrichment analysis", paste(var.subgroup, "up-altered"), sep = "-")) + theme(plot.title = element_text(hjust = 0.5, face = "bold"))})
             if(exists("y")) { if(nrow(y) > 0) {
               for(i in seq(1,length(y@result$core_enrichment))) {y@result$core_enrichment[i] <- paste(as.character(mapIds(org.Hs.eg.db, keys = unlist(strsplit(y@result$core_enrichment[i], split = "/")), keytype = "ENTREZID", column = "SYMBOL", multiVals = "first")),collapse = "/")}}}
-            p5.name <- paste('p5', mut.subgroup, groupid, paste( "impact", sub(impact, pattern = "X.HIGH.MODERATE.", replacement = "HIGH_or_MODERATE"), sep = ":"), sep = ".")
+            p5.name <- paste('p5', var.subgroup, groupid, paste( "impact", sub(impact, pattern = "X.HIGH.MODERATE.", replacement = "HIGH_or_MODERATE"), sep = ":"), sep = ".")
             if(exists('p5')) {assign(p5.name, value = p5)}
             
-            y.name <- paste("y", mut.subgroup, groupid, paste( "impact", sub(impact, pattern = "X.HIGH.MODERATE.", replacement = "HIGH_or_MODERATE"), sep = ":"), sep = ".")
-            y.name.df <- paste("y", mut.subgroup, groupid, paste( "impact", sub(impact, pattern = "X.HIGH.MODERATE.", replacement = "HIGH_or_MODERATE"), sep = ":"), "df", sep = ".")
+            y.name <- paste("y", var.subgroup, groupid, paste( "impact", sub(impact, pattern = "X.HIGH.MODERATE.", replacement = "HIGH_or_MODERATE"), sep = ":"), sep = ".")
+            y.name.df <- paste("y", var.subgroup, groupid, paste( "impact", sub(impact, pattern = "X.HIGH.MODERATE.", replacement = "HIGH_or_MODERATE"), sep = ":"), "df", sep = ".")
             if(exists("y")) {assign(y.name, value = y)}
             if(exists("y")) {assign(y.name.df, value = as.data.frame(get(y.name)))}
             geneList.Symbols <- geneList
             if (length(geneList.Symbols) > 0) {
               names(geneList.Symbols) <- mapIds(org.Hs.eg.db, keys = names(geneList.Symbols), keytype = "ENTREZID", column = "SYMBOL", multiVals = "first")}
             if(exists('y')) {if(nrow(get(y.name.df)) > 0) { 
-              p6 <- heatplot(get(y.name), showCategory = 50, foldChange = geneList.Symbols) + labs(title = paste("Gene set enrichment heatmap", paste(mut.subgroup, "upmutated"), sep = "-")) + theme(plot.title = element_text(hjust = 0.5, face = "bold"), axis.text.x = element_text(angle = 90, vjust = 0.5), panel.grid.major.x  = element_line(color = "grey", linetype = "solid", size = 0.5), panel.grid.major.y  = element_line(color = "grey", linetype = "solid", size = 0.5))}}
-            p6.name <- paste('p6', mut.subgroup, groupid, paste( "impact", sub(impact, pattern = "X.HIGH.MODERATE.", replacement = "HIGH_or_MODERATE"), sep = ":"), sep = ".")
+              p6 <- heatplot(get(y.name), showCategory = 50, foldChange = geneList.Symbols) + labs(title = paste("Gene set enrichment heatmap", paste(var.subgroup, "up-altered"), sep = "-")) + theme(plot.title = element_text(hjust = 0.5, face = "bold"), axis.text.x = element_text(angle = 90, vjust = 0.5), panel.grid.major.x  = element_line(color = "grey", linetype = "solid", size = 0.5), panel.grid.major.y  = element_line(color = "grey", linetype = "solid", size = 0.5))}}
+            p6.name <- paste('p6', var.subgroup, groupid, paste( "impact", sub(impact, pattern = "X.HIGH.MODERATE.", replacement = "HIGH_or_MODERATE"), sep = ":"), sep = ".")
             if(exists('p6')) {assign(p6.name, value = p6)}
             rm(p1, p2, p3, p4, p5, p6, y)
           }}}
@@ -268,8 +268,8 @@ f.vep.comparison <- function(Robject1, Robject2) {
       if(!exists(de.2)) {assign(de.2, value = NULL)}
       
       de.list.full <- do.call(mget, list(c(de.1, de.2)))
-      names(de.list.full) <- sub(subgroups, pattern = "(.*)", replacement = "\\1-upmutated")
-      library(clusterProfiler)
+      names(de.list.full) <- sub(subgroups, pattern = "(.*)", replacement = "\\1-up_altered")
+      
       try(compareClustersRes <- compareCluster(de.list.full, fun="enrichPathway", organism = "human", pAdjustMethod = "BH", pvalueCutoff=0.05, readable=TRUE))
       try(p7 <- dotplot(compareClustersRes, showCategory=50) + labs(title = paste("Pathway enrichment analysis - group comparison", sep = "-")) + theme(plot.title = element_text(hjust = 0.5, face = "bold")))
       p7.name <- paste('p7', "ZZZ", groupid, paste( "impact", sub(impact, pattern = "X.HIGH.MODERATE.", replacement = "HIGH_or_MODERATE"), sep = ":"), sep = ".")
@@ -301,12 +301,12 @@ f.vep.comparison <- function(Robject1, Robject2) {
         print(get(paste("p3", suffix, sep = ".")))} else {plot.new() + plot.window(xlim=c(-5,5), ylim=c(-5,5)); title(main=paste("Pathway enrichment map: not enough terms to draw a map", paste("subgroup", suffix, sep = ":"), sep = "-"))}
       dev.off()
       
-      pdf(paste("Reactome analysis", suffix, "04", "pdf", sep = "."), height = 10, width = 10)
+      pdf(paste("Reactome analysis", suffix, "04", "pdf", sep = "."), height = 13, width = 13)
       if(exists(paste("p4", suffix, sep = "."))) {
         print(get(paste("p4", suffix, sep = ".")))} else {plot.new() + plot.window(xlim=c(-5,5), ylim=c(-5,5)); title(main=paste("Complex assocations map: not enough terms to draw a map", paste("subgroup", suffix, sep = ":"), sep = "-"))}
       dev.off()
       
-      pdf(paste("Reactome analysis", suffix, "05", "pdf", sep = "."), height = 10, width = 10)
+      pdf(paste("Reactome analysis", suffix, "05", "pdf", sep = "."), height = 13, width = 13)
       if(exists(paste("p5", suffix, sep = "."))) {
         print(get(paste("p5", suffix, sep = ".")))} else {plot.new() + plot.window(xlim=c(-5,5), ylim=c(-5,5)); title(main=paste("Gene set enrichment analysis: no term enriched under specific pvalueCutoff", paste("subgroup", suffix, sep = ":"), sep = "-"))}
       dev.off()
@@ -339,12 +339,12 @@ f.vep.comparison <- function(Robject1, Robject2) {
         print(get(paste("p3", suffix, sep = ".")))} else {plot.new() + plot.window(xlim=c(-5,5), ylim=c(-5,5)); title(main=paste("Pathway enrichment map: not enough terms to draw a map", paste("subgroup", suffix, sep = ":"), sep = "-"))}
       dev.off()
       
-      pdf(paste("Reactome analysis", suffix, "10", "pdf", sep = "."), height = 10, width = 10)
+      pdf(paste("Reactome analysis", suffix, "10", "pdf", sep = "."), height = 13, width = 13)
       if(exists(paste("p4", suffix, sep = "."))) {
         print(get(paste("p4", suffix, sep = ".")))} else {plot.new() + plot.window(xlim=c(-5,5), ylim=c(-5,5)); title(main=paste("Complex assocations map: not enough terms to draw a map", paste("subgroup", suffix, sep = ":"), sep = "-"))}
       dev.off()
       
-      pdf(paste("Reactome analysis", suffix, "11", "pdf", sep = "."), height = 10, width = 10)
+      pdf(paste("Reactome analysis", suffix, "11", "pdf", sep = "."), height = 13, width = 13)
       if(exists(paste("p5", suffix, sep = "."))) {
         print(get(paste("p5", suffix, sep = ".")))} else {plot.new() + plot.window(xlim=c(-5,5), ylim=c(-5,5)); title(main=paste("Gene set enrichment analysis: no term enriched under specific pvalueCutoff", paste("subgroup", suffix, sep = ":"), sep = "-"))}
       dev.off()
@@ -366,7 +366,6 @@ f.vep.comparison <- function(Robject1, Robject2) {
         dev.off()}
       
       pdffiles <- sort(list.files(pattern = paste("Reactome analysis", paste0("(", paste(c(subgroups, "ZZZ"), collapse = "|"),")"), make.names(groupid), paste("impact", impact, sep = ":"), "[0-9#]+", "pdf", sep = ".")))
-      library(pdftools)
 
       reactome.pdf.name = paste0("Reactome_analysis.", Indfactor, ".", group, ".", groupid, ".", paste("impact", impact, sep = ":"), ".", runid,".pdf", sep = "")
 
@@ -381,14 +380,14 @@ f.vep.comparison <- function(Robject1, Robject2) {
       
       geneList.final <- paste("geneList", subgroups[1], groupid, paste("impact", impact, sep = ":"), sep = ".")
       if(exists(geneList.final)) {
-        sheet.name <- paste(subgroups[1], "upmutated", sep = ".")
+        sheet.name <- paste(subgroups[1], "up-altered", sep = ".")
         sheet.name <- substr(sheet.name, 1, 31)
         addWorksheet(wb = wb, sheetName = sheet.name)
         writeData(x = get(geneList.final), wb = wb, sheet = sheet.name, rowNames = T)
       }
       x.df.final <- paste("x", subgroups[1], groupid, paste("impact", impact, sep = ":"), "df", sep = ".")
       if(exists(x.df.final)) {
-        sheet.name <- paste("Path.enrich", subgroups[1], "upmutated", sep = ".")
+        sheet.name <- paste("Path.enrich", subgroups[1], "up-altered", sep = ".")
         sheet.name <- substr(sheet.name, 1, 31)
         addWorksheet(wb = wb, sheetName = sheet.name)
         writeData(x = get(x.df.final), wb = wb, sheet = sheet.name, rowNames = F)
@@ -396,7 +395,7 @@ f.vep.comparison <- function(Robject1, Robject2) {
       
       y.df.final <- paste("y", subgroups[1], groupid, paste("impact", impact, sep = ":"), "df", sep = ".")
       if(exists(y.df.final)) {
-        sheet.name <- paste("Gene.set.enrich", subgroups[1], "upmutated", sep = ".")
+        sheet.name <- paste("Gene.set.enrich", subgroups[1], "up-altered", sep = ".")
         sheet.name <- substr(sheet.name, 1, 31)
         addWorksheet(wb = wb, sheetName = sheet.name)
         writeData(x = get(y.df.final), wb = wb, sheet = sheet.name, rowNames = F)
@@ -404,14 +403,14 @@ f.vep.comparison <- function(Robject1, Robject2) {
       
       geneList.final <- paste("geneList", subgroups[2], groupid, paste("impact", impact, sep = ":"), sep = ".")
       if(exists(geneList.final)) {
-        sheet.name <- paste(subgroups[2], "upmutated", sep = ".")
+        sheet.name <- paste(subgroups[2], "up-altered", sep = ".")
         sheet.name <- substr(sheet.name, 1, 31)
         addWorksheet(wb = wb, sheetName = sheet.name)
         writeData(x = get(geneList.final), wb = wb, sheet = sheet.name, rowNames = T)
       }
       x.df.final <- paste("x", subgroups[2], groupid, paste("impact", impact, sep = ":"), "df", sep = ".")
       if(exists(x.df.final)) {
-        sheet.name <- paste("Path.enrich", subgroups[2], "upmutated", sep = ".")
+        sheet.name <- paste("Path.enrich", subgroups[2], "up-altered", sep = ".")
         sheet.name <- substr(sheet.name, 1, 31)
         addWorksheet(wb = wb, sheetName = sheet.name)
         writeData(x = get(x.df.final), wb = wb, sheet = sheet.name, rowNames = F)
@@ -419,7 +418,7 @@ f.vep.comparison <- function(Robject1, Robject2) {
       
       y.df.final <- paste("y", subgroups[2], groupid, paste("impact", impact, sep = ":"), "df", sep = ".")
       if(exists(y.df.final)) {
-        sheet.name <- paste("Gene.set.enrich", subgroups[2], "upmutated", sep = ".")
+        sheet.name <- paste("Gene.set.enrich", subgroups[2], "up-altered", sep = ".")
         sheet.name <- substr(sheet.name, 1, 31)
         addWorksheet(wb = wb, sheetName = sheet.name)
         writeData(x = get(y.df.final), wb = wb, sheet = sheet.name, rowNames = F)
@@ -439,11 +438,18 @@ f.vep.comparison <- function(Robject1, Robject2) {
   Robject1.list <<- load(Robject1, envir = .GlobalEnv)
   Robject2.list <<- load(Robject2, envir = .GlobalEnv)
   
-  if(arguments[6] != "NA") {
-  con <- file(arguments[6])
-  gene.signature <- readLines(con = con)
-  gene.signature.name <- gsub(arguments[6], pattern = "^.*\\/", replacement = "")
-  close(con)}
+  if(txt.file != "NA") {
+  con <- file(txt.file)
+  gene.list1 <- unique(gsub(readLines(con), pattern = "\\s", replacement = ""))
+  gene.signature.name <- gsub(txt.file, pattern = "^.*\\/", replacement = "")
+  close(con)
+
+  gene.signature <- NULL
+  for(i in gene.list1) {if(length(alias2Symbol(i, species = "Hs")) == 0) {gene.signature <- append(gene.signature, values = i)} else {gene.signature <- append(gene.signature, values = alias2Symbol(i, species = "Hs"))}}
+  gene.signature <- unique(gene.signature)
+  } else {
+  gene.signature.name <- NULL
+  }
   
   anno1 <- paste("anno", "SNP", groupid, "HIGH", sep = ".")
   anno2 <- paste("anno", "SNP", groupid, "X.HIGH.MODERATE.", sep = ".")
@@ -472,15 +478,18 @@ f.vep.comparison <- function(Robject1, Robject2) {
                       paste("res1.NON_SNP", groupid, "X.HIGH.MODERATE.", sep = "."), 
                       paste("res1.NON_SNP", groupid, "HIGH", sep = "."),
                       
-                      paste("new.muts.SNP", groupid, "X.HIGH.MODERATE.", sep = "."), 
-                      paste("new.muts.SNP", groupid, "HIGH", sep = "."),
-                      paste("new.muts.NON_SNP", groupid, "X.HIGH.MODERATE.", sep = "."), 
-                      paste("new.muts.NON_SNP", groupid, "HIGH", sep = ".")
+                      paste("new.vars.SNP", groupid, "X.HIGH.MODERATE.", sep = "."), 
+                      paste("new.vars.SNP", groupid, "HIGH", sep = "."),
+                      paste("new.vars.NON_SNP", groupid, "X.HIGH.MODERATE.", sep = "."), 
+                      paste("new.vars.NON_SNP", groupid, "HIGH", sep = ".")
                       )
 
   if(! all(sapply(needed.objects, exists))) {stop(paste("At least one needed object does not exist,", "groupid:", groupid, ", objects:", paste(needed.objects[!sapply(needed.objects, exists)], collapse = ", ")))}
   
   wb <- createWorkbook()
+  if(txt.file != "NA") {
+    wb2 <- createWorkbook()
+  }
 
   for(impact in impacts) {
     impact.name <- sub(impact, pattern = "X.HIGH.MODERATE.", replacement = "HIGH_or_MODERATE")  
@@ -489,23 +498,27 @@ f.vep.comparison <- function(Robject1, Robject2) {
     colSums.snp.df <- as.data.frame(colSums(get(df.snp.name)))
     colSums.snp.df[["Genes"]] <- rownames(colSums.snp.df)
     
-    df.snp.new.muts.name <- paste("new.muts", "SNP", groupid, impact, sep = ".")
-    unique.mut.genes.snp <- unique(get(df.snp.new.muts.name)[!duplicated(get(df.snp.new.muts.name)[,"HGVSg"]),][,"SYMBOL"])
-    unique.mut.genes.snp.numbers <- foreach(gene = unique.mut.genes.snp, .combine = c) %dopar% {sum(get(df.snp.new.muts.name)[!duplicated(get(df.snp.new.muts.name)[,"HGVSg"]),][,"SYMBOL"] == gene)}
-    names(unique.mut.genes.snp.numbers) <- unique.mut.genes.snp
-    unique.mut.genes.snp.numbers.df <- as.data.frame(unique.mut.genes.snp.numbers)
-    unique.mut.genes.snp.numbers.df[["Genes"]] <- rownames(unique.mut.genes.snp.numbers.df)
+    df.snp.new.vars.name <- paste("new.vars", "SNP", groupid, impact, sep = ".")
+    unique.var.genes.snp <- unique(get(df.snp.new.vars.name)[!duplicated(get(df.snp.new.vars.name)[,"HGVSg"]), , drop = F][,"SYMBOL"])
+    unique.var.genes.snp.numbers <- foreach(gene = unique.var.genes.snp, .combine = c) %dopar% {sum(get(df.snp.new.vars.name)[!duplicated(get(df.snp.new.vars.name)[,"HGVSg"]), , drop = F][,"SYMBOL"] == gene)}
+    if(length(unique.var.genes.snp.numbers) >0) {names(unique.var.genes.snp.numbers) <- unique.var.genes.snp
+    unique.var.genes.snp.numbers.df <- as.data.frame(unique.var.genes.snp.numbers)
+    unique.var.genes.snp.numbers.df[["Genes"]] <- rownames(unique.var.genes.snp.numbers.df)} else {
+    unique.var.genes.snp.numbers.df <- data.frame()
+    }
     
     df.non_snp.name <- paste("res1", "NON_SNP", groupid, impact, sep = ".")
     colSums.non_snp.df <- as.data.frame(colSums(get(df.non_snp.name)))
     colSums.non_snp.df[["Genes"]] <- rownames(colSums.non_snp.df)
     
-    df.non_snp.new.muts.name <- paste("new.muts", "NON_SNP", groupid, impact, sep = ".")
-    unique.mut.genes.non_snp <- unique(get(df.non_snp.new.muts.name)[!duplicated(get(df.non_snp.new.muts.name)[,"HGVSg"]),][,"SYMBOL"])
-    unique.mut.genes.non_snp.numbers <- foreach(gene = unique.mut.genes.non_snp, .combine = c) %dopar% {sum(get(df.non_snp.new.muts.name)[!duplicated(get(df.non_snp.new.muts.name)[,"HGVSg"]),][,"SYMBOL"] == gene)}
-    names(unique.mut.genes.non_snp.numbers) <- unique.mut.genes.non_snp
-    unique.mut.genes.non_snp.numbers.df <- as.data.frame(unique.mut.genes.non_snp.numbers)
-    unique.mut.genes.non_snp.numbers.df[["Genes"]] <- rownames(unique.mut.genes.non_snp.numbers.df)
+    df.non_snp.new.vars.name <- paste("new.vars", "NON_SNP", groupid, impact, sep = ".")
+    unique.var.genes.non_snp <- unique(get(df.non_snp.new.vars.name)[!duplicated(get(df.non_snp.new.vars.name)[,"HGVSg"]), , drop = F][,"SYMBOL"])
+    unique.var.genes.non_snp.numbers <- foreach(gene = unique.var.genes.non_snp, .combine = c) %dopar% {sum(get(df.non_snp.new.vars.name)[!duplicated(get(df.non_snp.new.vars.name)[,"HGVSg"]), , drop = F][,"SYMBOL"] == gene)}
+    if(length(unique.var.genes.non_snp.numbers) >0) {names(unique.var.genes.non_snp.numbers) <- unique.var.genes.non_snp
+    unique.var.genes.non_snp.numbers.df <- as.data.frame(unique.var.genes.non_snp.numbers)
+    unique.var.genes.non_snp.numbers.df[["Genes"]] <- rownames(unique.var.genes.non_snp.numbers.df)} else {
+    unique.var.genes.non_snp.numbers.df <- data.frame()
+    }
 
     df.snp.name <- paste("res1.bool", "SNP", groupid, impact, sep = ".")
     df.non.snp.name <- paste("res1.bool", "NON_SNP", groupid, impact, sep = ".")
@@ -535,6 +548,12 @@ f.vep.comparison <- function(Robject1, Robject2) {
     addWorksheet(wb = wb, sheetName = sheet.name)
     writeData(x = snp.non.snp.df, wb = wb, sheet = sheet.name, rowNames = F)
     
+    if(txt.file != "NA") {
+      snp.non.snp.df.signature <- snp.non.snp.df[snp.non.snp.df[["Gene"]] %in% gene.signature, , drop = F]
+      addWorksheet(wb = wb2, sheetName = sheet.name)
+      writeData(x = snp.non.snp.df.signature, wb = wb2, sheet = sheet.name, rowNames = F)
+    }
+    
     res1.bool.merged.sum[res1.bool.merged.sum == 2] <- 1
     res1.bool.merged.sum.t <- as.data.frame(t(res1.bool.merged.sum))
 
@@ -557,48 +576,74 @@ f.vep.comparison <- function(Robject1, Robject2) {
     rownames(res1.bool.merged.sum.t) <- res1.bool.merged.sum.t[["Row.names"]]
     res1.bool.merged.sum.t <- res1.bool.merged.sum.t[,-1]}
     
-    no.mut.samples.df <- as.data.frame(colSums(res1.bool.merged.sum.t))
-    no.mut.samples.df[["Genes"]] <- rownames(no.mut.samples.df)
-    freq.mut.samples.df <- as.data.frame(colSums(res1.bool.merged.sum.t)/nrow(res1.bool.merged.sum.t))
-    freq.mut.samples.df[["Genes"]] <- rownames(freq.mut.samples.df)
+    no.var.samples.df <- as.data.frame(colSums(res1.bool.merged.sum.t))
+    no.var.samples.df[["Genes"]] <- rownames(no.var.samples.df)
+    freq.var.samples.df <- as.data.frame(colSums(res1.bool.merged.sum.t)/nrow(res1.bool.merged.sum.t))
+    freq.var.samples.df[["Genes"]] <- rownames(freq.var.samples.df)
     
-    if(!all(sub(rownames(res1.bool.merged.sum.t), pattern = "#.*$", replacement = "") == rownames(anno))) {stop("Samples do not match annotations.")}
+    if(!all(rownames(res1.bool.merged.sum.t) == rownames(anno))) {stop("Samples do not match annotations.")}
     res1.bool.merged.sum.t.list <- as.list(with(res1.bool.merged.sum.t, by(data = res1.bool.merged.sum.t, INDICES = anno[[Indfactor]], FUN = print, simplify = F)))
     res1.bool.merged.sum.t.list <- res1.bool.merged.sum.t.list[sapply(res1.bool.merged.sum.t.list, function(x){!is.null(x)})]
     res1.bool.merged.sum.t.comb <- foreach(subset1 = res1.bool.merged.sum.t.list, .combine = cbind) %do% {data.frame(colSums(subset1), colMeans(subset1), colSds(as.matrix(subset1)))}
-    colnames(res1.bool.merged.sum.t.comb) <- as.vector(outer(c("Sum", "Mean", "SD"), names(res1.bool.merged.sum.t.list), paste, sep="."))
+    colnames(res1.bool.merged.sum.t.comb) <- as.vector(outer(c("Altered samples", "Fraction of altered samples", "SD"), names(res1.bool.merged.sum.t.list), paste, sep="."))
     res1.bool.merged.sum.t.comb.res <- reshape(res1.bool.merged.sum.t.comb, direction = "long", ids = rownames(res1.bool.merged.sum.t.comb), varying = colnames(res1.bool.merged.sum.t.comb))
     res1.bool.merged.sum.t.comb.res[is.na(res1.bool.merged.sum.t.comb.res)] <- 0
-    res1.bool.merged.sum.t.comb.res <- setNames(res1.bool.merged.sum.t.comb.res, nm = c(Indfactor, "Sum", "Mean", "SD", "Gene"))
+    res1.bool.merged.sum.t.comb.res <- setNames(res1.bool.merged.sum.t.comb.res, nm = c(Indfactor, "Altered samples", "Fraction of altered samples", "SD", "Gene"))
     res1.bool.merged.sum.t.comb.res <- res1.bool.merged.sum.t.comb.res[, c(5, 1:4), drop = F]
     res1.bool.merged.sum.t.comb.res[[Indfactor]] <- as.factor(res1.bool.merged.sum.t.comb.res[[Indfactor]])
     
-    sheet.name <- paste("Mut.freq.sum", impact.name, sep = ".")
+    sheet.name <- paste("Var.freq.sum", impact.name, sep = ".")
     addWorksheet(wb = wb, sheetName = sheet.name)
     writeData(x = res1.bool.merged.sum.t.comb.res, wb = wb , sheet = sheet.name, rowNames = F)
     
+    if(txt.file != "NA") {
+      res1.bool.merged.sum.t.comb.res.signature <- res1.bool.merged.sum.t.comb.res[res1.bool.merged.sum.t.comb.res[["Gene"]] %in% gene.signature, , drop = F]
+      addWorksheet(wb = wb2, sheetName = sheet.name)
+      writeData(x = res1.bool.merged.sum.t.comb.res.signature, wb = wb2 , sheet = sheet.name, rowNames = F)
+    }
+    
   if(length(unique(res1.bool.merged.sum.t.comb.res[["Gene"]]))>56) {width <- length(unique(res1.bool.merged.sum.t.comb.res[["Gene"]]))/8} else {width <- 7}
   pdf(file = paste(runid, "VEP.analysis.cumulative.res", groupid, impact, "pdf", sep = "."), width = width)
-    ggplot1 <- ggplot(res1.bool.merged.sum.t.comb.res, aes(x = Gene, y = Mean, fill = get(Indfactor))) + 
+    ggplot1 <- ggplot(res1.bool.merged.sum.t.comb.res, aes(x = Gene, y = `Fraction of altered samples`, fill = get(Indfactor))) + 
       geom_bar(stat = "identity", position = position_dodge()) + 
-      labs(title = paste0("Cumulative frequency of mutations ", "(", "impact: ", impact.name, ")"), x = "Gene names", y = "Fraction of mutated samples", fill = Indfactor) +
+      labs(title = paste0("Cumulative frequency of variants ", "(", "impact: ", impact.name, ")"), x = "Gene names", y = "Fraction of altered samples", fill = Indfactor) +
       theme(plot.title = element_text(hjust = 0.5), axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1)) +
       scale_fill_manual(values = as.vector(cols25()))
     print(ggplot1)
   dev.off()
-    
+  
+  if(txt.file != "NA") {
+    res1.bool.merged.sum.t.comb.res.signature <- res1.bool.merged.sum.t.comb.res[res1.bool.merged.sum.t.comb.res[["Gene"]] %in% gene.signature, , drop = F]
+    if(nrow(res1.bool.merged.sum.t.comb.res.signature) >0)
+    {
+      if(length(unique(res1.bool.merged.sum.t.comb.res.signature[["Gene"]]))>56) {width <- length(unique(res1.bool.merged.sum.t.comb.res.signature[["Gene"]]))/8} else {width <- 7}
+      pdf(file = paste(runid, "VEP.analysis.cumulative.res", groupid, "gene.signature", gene.signature.name, impact, "pdf", sep = "."), width = width)
+      ggplot1 <- ggplot(res1.bool.merged.sum.t.comb.res.signature, aes(x = Gene, y = `Fraction of altered samples`, fill = get(Indfactor))) + 
+        geom_bar(stat = "identity", position = position_dodge()) + 
+        labs(title = paste0("Cumulative frequency of variants ", "(", "impact: ", impact.name, ")\ngene signature: ", gene.signature.name), x = "Gene names", y = "Fraction of altered samples", fill = Indfactor) +
+        theme(plot.title = element_text(hjust = 0.5), axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1)) +
+        scale_fill_manual(values = as.vector(cols25()))
+      print(ggplot1)
+      dev.off()
+    }}
+  
     geneList <- colnames(res1.bool.merged.sum.t)
     
     level.names <- sort(as.character(unique(anno[[Indfactor]])))
-    if(!all(sub(rownames(res1.bool.merged.sum.t), pattern = "#.*$", replacement = "") == rownames(anno))) {stop("Annotations do not match sample names.")}
+    if(!all(rownames(res1.bool.merged.sum.t) == rownames(anno))) {stop("Annotations do not match sample names.")}
     res1.bool.merged.sum.t.colSums <- with(res1.bool.merged.sum.t, by(res1.bool.merged.sum.t, INDICES = anno[[Indfactor]], FUN = colSums, simplify = F))
     res1.bool.merged.sum.t.colSums.list <- foreach(level = level.names) %dopar% {
       df.tmp <- as.data.frame(cbind(res1.bool.merged.sum.t.colSums[[level]], nrow(subset(res1.bool.merged.sum.t, subset = anno[[Indfactor]] == level)) - res1.bool.merged.sum.t.colSums[[level]]))
-      df.tmp <- setNames(df.tmp, nm = c("Mutated", "Not_mutated"))}
+      df.tmp <- setNames(df.tmp, nm = c("Altered", "Not_altered"))}
     names(res1.bool.merged.sum.t.colSums.list) <- level.names
     
     rownames(res1.bool.merged.sum.t) <- sub(rownames(res1.bool.merged.sum.t), pattern = "#.*$", replacement = "")
     write.table(x = res1.bool.merged.sum.t, row.names = T, col.names = NA, quote = F, sep = ";", file = paste(runid, "VEP.analysis.results", groupid, Indfactor, "impact", sub(impact, pattern = "X.HIGH.MODERATE.", replacement = "HIGH_or_MODERATE"), "csv", sep = "."))
+    
+    if(txt.file != "NA") {
+      res1.bool.merged.sum.t.signature <- res1.bool.merged.sum.t[, colnames(res1.bool.merged.sum.t) %in% gene.signature, drop = F]
+      write.table(x = res1.bool.merged.sum.t.signature, row.names = T, col.names = NA, quote = F, sep = ";", file = paste(runid, "VEP.analysis.results", "gene.signature", gene.signature.name, groupid, Indfactor, "impact", sub(impact, pattern = "X.HIGH.MODERATE.", replacement = "HIGH_or_MODERATE"), "csv", sep = "."))
+    }
     
     if(length(level.names) > 1) {
       combinations <- combn(level.names, m = 2)
@@ -617,10 +662,10 @@ f.vep.comparison <- function(Robject1, Robject2) {
             vec1 <- res1.bool.merged.sum.t.colSums.list[[gr1]][rownames(res1.bool.merged.sum.t.colSums.list[[gr1]]) == gene, , drop = F]
             vec2 <- res1.bool.merged.sum.t.colSums.list[[gr2]][rownames(res1.bool.merged.sum.t.colSums.list[[gr2]]) == gene, , drop = F]
             df.tmp <- rbind(vec1, vec2)
-            mut.freq <- NULL
+            var.freq <- NULL
             for(i in seq(1, nrow(df.tmp))) {
-              mut.freq <- append(mut.freq, values = df.tmp[i,"Mutated"] / sum(df.tmp[i,]))}
-            gene.new.name <- paste(gene, which.max(mut.freq), sep = "#")
+              var.freq <- append(var.freq, values = df.tmp[i,"Altered"] / sum(df.tmp[i,]))}
+            gene.new.name <- paste(gene, which.max(var.freq), sep = "#")
             gene.new.name
           }
           names(l1.tmp) <- geneList.final.tmp
@@ -665,22 +710,35 @@ f.vep.comparison <- function(Robject1, Robject2) {
       assign(allGenes.list.name, value = allGenes.list)
       
       allGenes.df.list <- foreach(group1 = comp.list) %dopar% {
-        df.new <- data.frame(allGenes.list[[group1]],
+        group1_cats <- unlist(strsplit(group1, split = "_vs_"))
+        up_altered.group <- sub(names(allGenes.list[[group1]]), pattern = "(^.*#)", replacement = "")
+        up_altered_var <- foreach(up_group = up_altered.group, .combine = c) %do% {
+          if(up_group == "1") {group1_cats[1]} else 
+          if(up_group == "2") {group1_cats[2]} else 
+            {stop("The was a problem with the determination of the up-altered group.")}}
+        df.new <- data.frame(up_altered_var, allGenes.list[[group1]],
                    p.adjust(allGenes.list[[group1]], method = "fdr"))
+        
         rownames(df.new) <- sub(names(allGenes.list[[group1]]), pattern = "#.*$", replacement = "")
         df.new[["Genes"]] <- rownames(df.new)
-        colnames(df.new) <- c(as.character(outer(group1, c("p-value", "padj"), paste, sep = ".")), "Genes")
-        df.new[,c(3,1:2)]
+        colnames(df.new) <- c(as.character(outer(group1, c("up-altered.group", "p-value", "padj"), paste, sep = ".")), "Genes")
+        df.new[,c(4,1:3)]
         }
       names(allGenes.df.list) <- comp.list
       
-      allGenes.df <- Reduce(function(x, y) merge(x = x, y = y, by.x = "Genes", by.y = "Genes"), allGenes.df.list)
-      if(length(comp.list) == 1 & all(allGenes.df[["Genes"]] == sub(geneListNew, pattern = "#.*$", replacement = ""))) {
-        allGenes.df[["Genes"]] <- geneListNew
-      }
+      allGenes.df <- Reduce(function(x, y) merge(x = x, y = y, by.x = "Genes", by.y = "Genes", all = T), allGenes.df.list)
+      allGenes.df[["Ensembl.ID"]] <- mapIds(x = org.Hs.eg.db, keys = allGenes.df[["Genes"]], keytype = "SYMBOL", column = "ENSEMBL", multiVals = "first")
+      allGenes.df[["Entrez.ID"]] <- mapIds(x = org.Hs.eg.db, keys = allGenes.df[["Genes"]], keytype = "SYMBOL", column = "ENTREZID", multiVals = "first")
+      allGenes.df <- allGenes.df[, c(1,ncol(allGenes.df)-1, ncol(allGenes.df),2:(ncol(allGenes.df)-2))]
       
       addWorksheet(wb = wb, sheetName = paste("All_stats", impact.name, sep = "."))
-      writeData(x = allGenes.df, wb = wb, sheet = paste("All_stats", impact.name, sep = "."), rowNames = F)
+      writeData(x = allGenes.df, wb = wb, sheet = paste("All_stats", impact.name, sep = "."), rowNames = F, keepNA = T, na.string = "NA")
+      
+      if(txt.file != "NA") {
+        allGenes.df.signature <- allGenes.df[allGenes.df[["Genes"]] %in% gene.signature, , drop = F]
+        addWorksheet(wb = wb2, sheetName = paste("All_stats", impact.name, sep = "."))
+        writeData(x = allGenes.df.signature, wb = wb2, sheet = paste("All_stats", impact.name, sep = "."), rowNames = F, keepNA = T, na.string = "NA")
+      }
       
       sigGenes.list <- foreach(group1 = comp.list) %dopar% {
       if(fdr) {
@@ -693,9 +751,9 @@ f.vep.comparison <- function(Robject1, Robject2) {
       assign(sigGenes.list.name, value = sigGenes.list)
       
       sink(file = paste(runid, "Significant_genes", Indfactor, groupid, "impact", sub(impact, pattern = "X.HIGH.MODERATE.", replacement = "HIGH_or_MODERATE"), paste("fdr", fdr, sep = ":"), "txt", sep = "."))
-      cat("Genes with at least one mutation in at least one sample (the list of genes submitted to the topGO app):\n")
+      cat("Genes with at least one variant in at least one sample (the list of genes submitted to the topGO app):\n")
       cat(geneList, sep = ", ")
-      cat("\n\nGenes with significant differences in mutation frequencies between the displayed groups (p-values of the Chi-square test or the Fisher exact test are included). Values after the hash sign(#) show in which group the frequency of mutations is higher (1 and 2 stand for the group before and after 'vs', respectively):\n")
+      cat("\n\nGenes with significant differences in variant frequencies between the displayed groups (p-values of the Chi-square test or the Fisher exact test are included). Values after the hash sign(#) show in which group the frequency of variants is higher (1 and 2 stand for the group before and after 'vs', respectively):\n")
       print(sigGenes.list)
       sink()
       
@@ -712,9 +770,13 @@ f.vep.comparison <- function(Robject1, Robject2) {
         }
         setwd(workdir)
       }}
-    summary.table.list <- list(colSums.snp.df, unique.mut.genes.snp.numbers.df, colSums.non_snp.df, unique.mut.genes.non_snp.numbers.df, no.mut.samples.df, freq.mut.samples.df)
+    summary.table.colnames <- c("Genes", paste0("SNP variants", " (", impact.name, ")"), paste0("New unique SNP variants", " (", impact.name, ")"), paste0("NON_SNP variants", " (", impact.name, ")"), paste0("New unique NON_SNP variants", " (", impact.name, ")"), paste0("Altered samples", " (", impact.name, ")"), paste0("Fraction of altered samples", " (", impact.name, ")"))
+    summary.table.list <- list(colSums.snp.df, unique.var.genes.snp.numbers.df, colSums.non_snp.df, unique.var.genes.non_snp.numbers.df, no.var.samples.df, freq.var.samples.df)
+    summary.table.colnames.bool <- c(TRUE, sapply(summary.table.list,nrow) != 0)
+    summary.table.list <- summary.table.list[sapply(summary.table.list, nrow) != 0]
+    summary.table.colnames <- summary.table.colnames[summary.table.colnames.bool]
     summary.table <- Reduce(function(x,y) merge(x = x, y = y, all = T, by.x = "Genes", by.y = "Genes"), summary.table.list)
-    summary.table <- setNames(summary.table, nm = c("Genes", paste0("SNP variants", " (", impact.name, ")"), paste0("New unique SNP variants", " (", impact.name, ")"), paste0("NON_SNP variants", " (", impact.name, ")"), paste0("New unique NON_SNP variants", " (", impact.name, ")"), paste0("Altered samples", " (", impact.name, ")"), paste0("Freq. of altered samples", " (", impact.name, ")")))
+    summary.table <- setNames(summary.table, nm = summary.table.colnames)
     summary.table[is.na(summary.table)] <- 0
     
     summary.table.name <- paste("summary.table", impact.name, sep = ".")
@@ -731,18 +793,28 @@ f.vep.comparison <- function(Robject1, Robject2) {
   if(exists("summary.table.final")) {
     addWorksheet(wb = wb, sheetName = "Summary_table")
     writeData(wb = wb, x = summary.table.final, sheet = "Summary_table")
+    
     if(exists("gene.signature")) {
       summary.table.final.gene.signature <- summary.table.final[summary.table.final[["Genes"]] %in% gene.signature, , drop = F]
-      sheet.name <- substr(paste("Summary_table", gene.signature.name, sep = "."), 1,31)
-      addWorksheet(wb = wb, sheetName = sheet.name)
-      writeData(wb = wb, x = summary.table.final.gene.signature, sheet = sheet.name)
+      addWorksheet(wb = wb2, sheetName = "Summary_table")
+      writeData(wb = wb2, x = summary.table.final.gene.signature, sheet = "Summary_table")
     }}
 
-  pdffiles2 <- list.files(pattern = paste0("^", runid, "\\.VEP.analysis.cumulative.res\\.", groupid, ".*", "\\.pdf$"))
-  pdf_combine(pdffiles2, output = paste(runid, "VEP.analysis.cumulative.results", groupid, Indfactor, "pdf", sep = "."))
+  pdffiles2 <- grep(list.files(pattern = paste0("^", runid, "\\.VEP.analysis.cumulative.res\\.", groupid, ".*", "\\.pdf$")), pattern = paste("\\.gene\\.signature", gene.signature.name, sep = "."), value = T, invert = T)
+  pdf_combine(pdffiles2, output = paste(runid, "VEP.analysis.cumulative.results.ALL.GENES", groupid, Indfactor, "pdf", sep = "."))
   unlink(pdffiles2)
   
-  saveWorkbook(wb = wb, file = gsub(paste(runid, "VEP.analysis.cumulative.results", groupid, Indfactor, if(exists("gene.signature")){paste0("gene_signature:", gene.signature.name)}, "xlsx", sep = "."), pattern = "\\.\\.", replacement = "."), overwrite = T)
+  if(txt.file != "NA") {
+    pdffiles3 <- grep(list.files(pattern = paste0("^", runid, "\\.VEP.analysis.cumulative.res\\.", groupid, ".*", "\\.pdf$")), pattern = paste("\\.gene\\.signature", gene.signature.name, sep = "."), value = T)
+    pdf_combine(pdffiles3, output = paste(runid, "VEP.analysis.cumulative.results.gene.signature", gene.signature.name, groupid, Indfactor, "pdf", sep = "."))
+    unlink(pdffiles3)
+  }
+  
+  saveWorkbook(wb = wb, file = gsub(paste(runid, "VEP.analysis.cumulative.results", groupid, Indfactor, "xlsx", sep = "."), pattern = "\\.\\.", replacement = "."), overwrite = T)
+  
+  if(txt.file != "NA") {
+  saveWorkbook(wb = wb2, file = gsub(paste(runid, "VEP.analysis.cumulative.results", groupid, Indfactor, paste0("gene_signature:", gene.signature.name), "xlsx", sep = "."), pattern = "\\.\\.", replacement = "."), overwrite = T)
+  }
   
   if(length(level.names) > 1) {
     for(group in comp.list) {
@@ -764,7 +836,7 @@ grouping.col <- arguments2[4]
 grouping.cols <- unlist(strsplit(arguments2[4], split = "\\,"))
 Indfactor <- arguments2[5]
 pairedSamples <- arguments2[6]
-pair.ind <- arguments2[7]
+pair.ident <- arguments2[7]
 fdr <- as.logical(arguments2[8])
 
 registerDoMC(threads)
@@ -772,7 +844,7 @@ registerDoMC(threads)
 csvtable.full <- fread(file = csvfile, sep = ";", header = T, stringsAsFactors = F)
 csvtable.full <- csvtable.full[!grepl(csvtable.full[[Indfactor]], pattern = "^([[:space:]]?)+$"),]
 csvtable.full <- csvtable.full[!is.na(csvtable.full[[Indfactor]]),]
-if(pairedSamples == "TRUE") {csvtable.full <- csvtable.full[!is.na(csvtable.full[[pair.ind]]),]}
+if(pairedSamples == "TRUE") {csvtable.full <- csvtable.full[!is.na(csvtable.full[[pair.ident]]),]}
 
 Robject1.dir <- sub(arguments2[1], pattern = "\\/COMPARISON\\/", replacement = "/SNP/Summary/")
 Robject2.dir <- sub(arguments2[1], pattern = "\\/COMPARISON\\/", replacement = "/NON_SNP/Summary/")
@@ -804,5 +876,6 @@ for(groupid in groupids) {
 
 sessionInfo()
 proc.time()
+date()
 
 cat("All done.\n")
