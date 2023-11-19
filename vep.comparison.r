@@ -31,6 +31,7 @@ library(limma)
 library(topGO)
 library(ReactomePA)
 library(clusterProfiler)
+library(sjmisc)
 
 f.vep.comparison <- function(Robject1, Robject2) {
   f.topGO <- function(geneList, sigGenes) {
@@ -442,18 +443,18 @@ f.vep.comparison <- function(Robject1, Robject2) {
       }
       
       saveWorkbook(wb = wb, file = reactome.xlsx.name, overwrite = T)
-    }}
+    }
+  }
 
   if(all(sapply(c(Robject1, Robject2), file.exists))) {
-  Robject1.list <<- load(Robject1, envir = .GlobalEnv)
-  Robject2.list <<- load(Robject2, envir = .GlobalEnv)
+  load(Robject1)
+  load(Robject2)
   
   if(txt.file != "NA") {
   con <- file(txt.file)
   gene.list1 <- unique(gsub(readLines(con), pattern = "\\s", replacement = ""))
   gene.signature.name <- gsub(txt.file, pattern = "^.*\\/", replacement = "")
   close(con)
-
   gene.signature <- NULL
   for(i in gene.list1) {if(length(alias2Symbol(i, species = "Hs")) == 0) {gene.signature <- append(gene.signature, values = i)} else {gene.signature <- append(gene.signature, values = alias2Symbol(i, species = "Hs"))}}
   gene.signature <- unique(gene.signature)
@@ -461,10 +462,14 @@ f.vep.comparison <- function(Robject1, Robject2) {
   gene.signature.name <- NULL
   }
   
-  anno1 <- paste("anno", "SNP", groupid, "HIGH", sep = ".")
-  anno2 <- paste("anno", "SNP", groupid, "X.HIGH.MODERATE.", sep = ".")
-  anno3 <- paste("anno", "NON_SNP", groupid, "HIGH", sep = ".")
-  anno4 <- paste("anno", "NON_SNP", groupid, "X.HIGH.MODERATE.", sep = ".")
+# Testing whether the lists of anno files matches between SNP and NON_SNP analyses.
+if(!all(grep(ls(), pattern = "^anno\\.SNP", value = T) == sub(grep(ls(), pattern = "^anno\\.NON_SNP", value = T), pattern = "NON_", replacement = ""))) {
+  stop("The lists of anno files do not match between SNP and NON_SNP analyses.")}
+
+all.impacts <- c("HIGH", "MODERATE", "X.HIGH.MODERATE.")
+impacts <- all.impacts[str_contains(x = grep(ls(), pattern = "^anno\\.SNP", value = T), pattern = all.impacts)]
+
+  annos <- paste("anno", "SNP", groupid, impacts, sep = ".")
   
   anno.checker <- function(annos) {
     anno.rownames <- foreach(anno = annos, .combine = cbind) %dopar% {
@@ -473,28 +478,20 @@ f.vep.comparison <- function(Robject1, Robject2) {
       length(unique(anno.rownames[i,1:ncol(anno.rownames)]))
     }
     all(row.values == 1)}
-  if(! anno.checker(c(anno1, anno2, anno3, anno4))) {stop("Not all annotation files match.")}
-  anno <- get(anno1)
+  if(! anno.checker(annos)) {stop("Not all annotation files match.")}
+  anno <- get(annos[1])
   
-  impacts <- c("HIGH", "X.HIGH.MODERATE.")
-  
-  needed.objects <- c(paste("res1.bool.SNP", groupid, "X.HIGH.MODERATE.", sep = "."), 
-                      paste("res1.bool.SNP", groupid, "HIGH", sep = "."),
-                      paste("res1.bool.NON_SNP", groupid, "X.HIGH.MODERATE.", sep = "."), 
-                      paste("res1.bool.NON_SNP", groupid, "HIGH", sep = "."),
+  needed.objects <- c(paste("res1.bool.SNP", groupid, impacts, sep = "."), 
+                      paste("res1.bool.NON_SNP", groupid, impacts, sep = "."), 
                       
-                      paste("res1.SNP", groupid, "X.HIGH.MODERATE.", sep = "."), 
-                      paste("res1.SNP", groupid, "HIGH", sep = "."),
-                      paste("res1.NON_SNP", groupid, "X.HIGH.MODERATE.", sep = "."), 
-                      paste("res1.NON_SNP", groupid, "HIGH", sep = "."),
+                      paste("res1.SNP", groupid, impacts, sep = "."), 
+                      paste("res1.NON_SNP", groupid, impacts, sep = "."), 
                       
-                      paste("new.vars.SNP", groupid, "X.HIGH.MODERATE.", sep = "."), 
-                      paste("new.vars.SNP", groupid, "HIGH", sep = "."),
-                      paste("new.vars.NON_SNP", groupid, "X.HIGH.MODERATE.", sep = "."), 
-                      paste("new.vars.NON_SNP", groupid, "HIGH", sep = ".")
+                      paste("new.vars.SNP", groupid, impacts, sep = "."), 
+                      paste("new.vars.NON_SNP", groupid, impacts, sep = ".") 
                       )
 
-  if(! all(sapply(needed.objects, exists))) {stop(paste("At least one needed object does not exist,", "groupid:", groupid, ", objects:", paste(needed.objects[!sapply(needed.objects, exists)], collapse = ", ")))}
+  if(! all(foreach(obj = needed.objects, .combine = c) %do% {exists(obj)})) {stop(paste("At least one needed object does not exist,", "groupid:", groupid, ", objects:", paste(needed.objects[!sapply(needed.objects, exists)], collapse = ", ")))}
   
   wb <- createWorkbook()
   if(txt.file != "NA") {
@@ -782,29 +779,35 @@ f.vep.comparison <- function(Robject1, Robject2) {
       }}
     summary.table.colnames <- c("Genes", paste0("SNP variants", " (", impact.name, ")"), paste0("New unique SNP variants", " (", impact.name, ")"), paste0("NON_SNP variants", " (", impact.name, ")"), paste0("New unique NON_SNP variants", " (", impact.name, ")"), paste0("Altered samples", " (", impact.name, ")"), paste0("Fraction of altered samples", " (", impact.name, ")"))
     summary.table.list <- list(colSums.snp.df, unique.var.genes.snp.numbers.df, colSums.non_snp.df, unique.var.genes.non_snp.numbers.df, no.var.samples.df, freq.var.samples.df)
-    summary.table.colnames.bool <- c(TRUE, sapply(summary.table.list,nrow) != 0)
-    summary.table.list <- summary.table.list[sapply(summary.table.list, nrow) != 0]
-    summary.table.colnames <- summary.table.colnames[summary.table.colnames.bool]
+    summary.table.list <- lapply(summary.table.list, function(df) {
+    if(ncol(df) == 0) {
+        df <- subset(data.frame(data = NA, Genes = NA), subset = !is.na(Genes))}
+        return(df)})
+    
     summary.table <- Reduce(function(x,y) merge(x = x, y = y, all = T, by.x = "Genes", by.y = "Genes"), summary.table.list)
     summary.table <- setNames(summary.table, nm = summary.table.colnames)
     summary.table[is.na(summary.table)] <- 0
-    
     summary.table.name <- paste("summary.table", impact.name, sep = ".")
     assign(summary.table.name, value = summary.table)
     }}
   
-  if(length(ls(pattern = "summary\\.table\\.HIGH")) == 2) {
-    summary.table.final <- merge(x = summary.table.HIGH, y = summary.table.HIGH_or_MODERATE, by.x = "Genes", by.y = "Genes", all = T)
-    summary.table.final[is.na(summary.table.final)] <- 0
-    } else
-  if(length(ls(pattern = "summary\\.table\\.HIGH")) == 1) {
-    summary.table.final <- get(ls(pattern = "summary\\.table\\.HIGH"))}
+  tables <- ls(pattern = "summary\\.table\\.")
+
+  tables.keep <- foreach(table = tables, .combine = c) %do% {
+        any(str_contains(x = table, 
+        pattern = sub(impacts, pattern = "X.HIGH.MODERATE.", replacement = "HIGH_or_MODERATE")))
+        }
+  tables <- tables[tables.keep]
+  tables <- tables[order(sapply(tables, nchar))]
+  summary.table.final <- Reduce(x = foreach(value = tables) %do% {get(value)}, f = function(x,y) {
+    merge(x = x, y = y, by.x = "Genes", by.y = "Genes", all = T)})
+  summary.table.final[is.na(summary.table.final)] <- 0
 
   if(exists("summary.table.final")) {
     addWorksheet(wb = wb, sheetName = "Summary_table")
     writeData(wb = wb, x = summary.table.final, sheet = "Summary_table")
     
-    if(exists("gene.signature")) {
+    if(txt.file != "NA") {
       summary.table.final.gene.signature <- summary.table.final[summary.table.final[["Genes"]] %in% gene.signature, , drop = F]
       addWorksheet(wb = wb2, sheetName = "Summary_table")
       writeData(wb = wb2, x = summary.table.final.gene.signature, sheet = "Summary_table")
@@ -885,8 +888,6 @@ for(groupid in groupids) {
   Robject1.path <- paste(Robject1.dir, Robject1.file, sep = "/")
   Robject2.path <- paste(Robject2.dir, Robject2.file, sep = "/")
   f.vep.comparison(Robject1 = Robject1.path, Robject2 = Robject2.path)
-  rm(list = Robject1.list)
-  rm(list = Robject2.list)
 }
 
 sessionInfo()
