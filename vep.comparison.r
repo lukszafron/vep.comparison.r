@@ -596,8 +596,8 @@ impacts <- all.impacts[str_contains(x = grep(ls(), pattern = "^anno\\.SNP", valu
     res1.bool.merged.sum.t.list <- as.list(with(res1.bool.merged.sum.t, by(data = res1.bool.merged.sum.t, INDICES = anno[[Indfactor]], FUN = print, simplify = F)))
     res1.bool.merged.sum.t.list <- res1.bool.merged.sum.t.list[sapply(res1.bool.merged.sum.t.list, function(x){!is.null(x)})]
     res1.bool.merged.sum.t.comb <- foreach(subset1 = res1.bool.merged.sum.t.list, .combine = cbind) %do% {data.frame(colSums(subset1), colMeans(subset1), colSds(as.matrix(subset1)))}
-    colnames(res1.bool.merged.sum.t.comb) <- as.vector(outer(c("Altered samples", "Fraction of altered samples", "SD"), names(res1.bool.merged.sum.t.list), paste, sep="."))
-    res1.bool.merged.sum.t.comb.res <- reshape(res1.bool.merged.sum.t.comb, direction = "long", ids = rownames(res1.bool.merged.sum.t.comb), varying = colnames(res1.bool.merged.sum.t.comb))
+    colnames(res1.bool.merged.sum.t.comb) <- as.vector(outer(c("Altered samples", "Fraction of altered samples", "SD"), names(res1.bool.merged.sum.t.list), paste, sep = "#"))
+    res1.bool.merged.sum.t.comb.res <- reshape(res1.bool.merged.sum.t.comb, direction = "long", ids = rownames(res1.bool.merged.sum.t.comb), varying = colnames(res1.bool.merged.sum.t.comb), sep = "#")
     res1.bool.merged.sum.t.comb.res[is.na(res1.bool.merged.sum.t.comb.res)] <- 0
     res1.bool.merged.sum.t.comb.res <- setNames(res1.bool.merged.sum.t.comb.res, nm = c(Indfactor, "Altered samples", "Fraction of altered samples", "SD", "Gene"))
     res1.bool.merged.sum.t.comb.res <- res1.bool.merged.sum.t.comb.res[, c(5, 1:4), drop = F]
